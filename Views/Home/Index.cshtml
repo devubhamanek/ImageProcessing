@@ -1,0 +1,949 @@
+﻿@{
+    ViewBag.Title = "Index";
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width" />
+    <title>File Upload MVC 4</title>
+    @*<script src="~/js/jquery.min.js"></script>
+        <script src="~/js/jquery.Jcrop.js"></script>
+
+        <link href="~/css/jquery.Jcrop.css" rel="stylesheet" />*@
+    <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+    <script src="http://code.jquery.com/jquery-1.9.1.js"></script>
+    <script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+    <script src="~/js/jquery.Jcrop.min.js"></script>
+    <link rel="stylesheet" href="~/css/jquery.Jcrop.min.css" type="text/css" />
+    <link href="~/Content/bootstrap.min.css" rel="stylesheet" />
+    <link href="~/Content/bootstrap-theme.min.css" rel="stylesheet" />
+    <link href="~/Content/jquery.fileupload.css" rel="stylesheet" />
+    <script src="~/Scripts/jquery.ui.widget.js"></script>
+    <script src="~/Scripts/bootstrap.min.js"></script>
+    <script src="~/Scripts/jquery.fileupload.js"></script>
+
+    <script type="text/javascript">
+        var cPushArray = new Array();
+        var cStep = -1;
+
+        // var urlimage="images/cat.jpg";
+        var canvas;
+        var ctx;
+        var angleInDegrees = 0;
+        var dataURL;
+        var Jcrop_api;
+        var canvaswidth = 300;
+        var canvasheight = 300;
+        var txtwidth;
+        var txtheight;
+        //for zooming
+        var zoomDelta = 0.1;
+        var currentScale = 1;
+        var startX, startY, isDown = false;
+
+        $(document).ready(function () {
+            // var urlimage="images/cat.jpg";
+            //var canvas;
+            //var ctx;
+            //var angleInDegrees = 0;
+            //var dataURL;
+            //var Jcrop_api;
+            //var canvaswidth;
+            //var canvasheight;
+            //var txtwidth;
+            //var txtheight;
+            //var image = document.createElement("img");
+            //image.onload = function () {
+            //    ctx.drawImage(image, canvas.width / 2 - image.width / 2, canvas.height / 2 - image.width / 2);
+            //}
+            //image.src = urlimage;
+            canvas = document.getElementById("canvas");
+            ctx = canvas.getContext("2d");
+            function draw(ev) {
+                console.log(ev);
+                canvas = document.getElementById("canvas");
+                ctx = canvas.getContext("2d"),
+
+                //var ctx = document.getElementById('canvas').getContext('2d'),
+                   img = new Image(),
+                   f = document.getElementById("fileUpload").files[0];
+                url = window.URL || window.webkitURL,
+                src = url.createObjectURL(f);
+                img.src = src;
+
+                img.onload = function (e) {
+
+                    //var progress = parseInt(img.sia / data.total * 100, 10);
+                    var progress = f.size * 100 / 10;
+                    progress += 10;
+                    $('.progress .progress-bar').css('width', progress + '%');
+                    //if (img.width > canvaswidth) {
+                    //canvas.width = img.width;
+                    //canvas.height = img.height;
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    //drawImage();
+                    //}
+                    //else
+                    //{
+                    //    canvas.height =img.height;
+                    //    canvas.width = img.width;
+                    //    ctx.drawImage(img, 0, 0, img.width, img.height);
+                    //}
+                    dataURL = canvas.toDataURL("image/png");
+                    
+                    cPushArray.length = 0;
+                    cPush();
+                    //url.revokeObjectURL(src);
+                }
+            }
+
+            document.getElementById("fileUpload").addEventListener("change", draw, false)
+            function drawImage() {
+                clear();
+                ctx.save(); //as we now keep track outselves of angle/zoom due to
+                //translation, we can use save/restore
+                ctx.scale(currentScale, currentScale);
+                // element.rotate(currentAngle * Math.PI / 180);
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                ctx.restore();
+            }
+            jQuery('#scaler').on('change', function () {
+                alert("hiiii");
+                alert(this.value)
+                currentScale = (this.value);
+                drawImage();
+            });
+
+            canvas.onmousedown = function (e) {
+
+                var pos = getMousePos(canvas, e);
+                startX = pos.x;  //store current position
+                startY = pos.y;
+
+                isDown = true;   //mark that we are in move operation
+            }
+
+            canvas.onmousemove = function (e) {
+
+                if (isDown === true) {
+                    var pos = getMousePos(canvas, e);
+                    var x = pos.x;
+                    var y = pos.y;
+
+                    //translate difference from now and start
+
+                    ctx.translate(x - startX, y - startY);
+                    drawImage();
+
+                    //update start positions for next loop
+                    startX = x;
+                    startY = y;
+                }
+            }
+
+            //reset move operation status
+            canvas.onmouseup = function (e) {
+                isDown = false;
+            }
+
+            function getMousePos(canvas, evt) {
+                var rect = canvas.getBoundingClientRect();
+                return {
+                    x: evt.clientX - rect.left,
+                    y: evt.clientY - rect.top,
+
+                };
+            }
+
+            // Function to clear canvas
+            function clear() {
+
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+
+
+            $("#clockwise").click(function () {
+                angleInDegrees += 90;
+                canvas = document.getElementById("canvas");
+                ctx = canvas.getContext("2d");
+                ctx.restore();
+                drawRotated(angleInDegrees);
+            });
+
+            $("#counterclockwise").click(function () {
+                angleInDegrees -= 90;
+                drawRotated(angleInDegrees);
+            });
+
+            function drawRotated(degrees) {
+                //var imageObj = $("#canvas")[0];
+                canvas = document.getElementById("canvas");
+                ctx = canvas.getContext("2d"),
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.save();
+                ctx.translate(canvas.width / 2, canvas.height / 2);
+                ctx.rotate(degrees * Math.PI / 180);
+                //updatePreview();
+                
+                var image = new Image();
+
+                image.src = dataURL;
+                ctx.drawImage(image, -image.width / 2, -image.width / 2);
+                //dataURL = canvas.toDataURL("image/png");
+                ctx.restore();
+               
+            }
+
+            function updatePreview(c) {
+                if (parseInt(c.w) > 0) {
+                    // Show image preview
+                    var imageObj = $("#canvas")[0];
+                    var canvas = $("#canvas")[0];
+                    var context = canvas.getContext("2d");
+
+                    if (imageObj != null && c.x != 0 && c.y != 0 && c.w != 0 && c.h != 0) {
+                        context.drawImage(imageObj, c.x, c.y, c.w, c.h, 0, 0, canvas.width, canvas.height);
+
+                        //context.save();
+
+                    }
+                }
+            }
+            $("#crop").click(function () {
+                alert("hello");
+                if ($(this).hasClass('selected')) {
+                    deselect1($(this));
+                } else {
+                    $(this).addClass('selected');
+                    $('.pop1').slideFadeToggle();
+                }
+                txtwidth = document.getElementById("txtw").value;
+                txtheight = document.getElementById("txth").value;
+                //    alert(txtwidth);
+                Jcrop_api = $.Jcrop('#canvas', {
+
+
+
+                    onSelect: Croparea,
+                    //allowSelect: true,
+                    setSelect: [50, 50, txtwidth, txtheight]
+                    //allowMove: true,
+                    //allowRes: true,
+                    //aspectRatio: 1
+                });
+            });
+            $("#save").click(function () {
+                alert("hello");
+                if ($(this).hasClass('selected')) {
+                    deselectdow($(this));
+                } else {
+                    $(this).addClass('selected');
+                    $('.pop2').slideFadeToggle();
+                }
+                //var data = canvas.toDataURL("image/png").replace("image/png", "image/octet-stream");
+                //window.location.href = data;
+            });
+            //$('#crop').on('click', function () {
+            //    if ($(this).hasClass('selected')) {
+            //        deselect($(this));
+            //    } else {
+            //        $(this).addClass('selected');
+            //        $('.pop').slideFadeToggle();
+            //    }
+            //    var txtwidth = document.getElementById("txtw").value;
+            //    var txtheight = document.getElementById("txth").value;
+            //    alert(txtwidth);
+            //    $("#canvas").jcrop
+            //({
+
+            //    setselect: [50, 50, txtwidth, txtheight],
+            //    onselect: croparea,
+            //    allowselect: true,
+            //    allowmove: true,
+            //    allowresize: true,
+            //    aspectratio: 0
+            //});
+            //    return false;
+
+            function Croparea(c) {
+                $('#hdX').val(c.x);
+                $('#hdY').val(c.y);
+                $('#hdW').val(c.w);
+                $('#hdH').val(c.h);
+                document.getElementById("txtw").value = c.w;
+                document.getElementById("txth").value = c.h;
+            }
+            $("#fcrop").click(function () {
+                alert("hello");
+                canvas = document.getElementById("canvas");
+                ctx = canvas.getContext("2d");
+                var height = $('#hdH').val();
+                var weight = $('#hdW').val();
+                var hdx = $('#hdX').val();
+                var hdy = $('#hdY').val();
+                var imageObj = $("#canvas")[0];
+                canvas = $("#canvas")[0];
+                // var context = canvas.getContext("2d");
+
+                if (imageObj != null) {
+
+                    ctx.drawImage(imageObj, hdx, hdy, weight, height, 0, 0, canvas.width, canvas.height);
+                    //ctx.getImageData()
+
+                    dataURL = canvas.toDataURL("image/png");
+                    cPush();
+                    document.getElementById("sample").src = dataURL;
+                    //urlimage = dataURL;
+                    //alert(urlimage);
+                    //image.src = imageObj;
+
+
+                }
+                deselect1($('#crop'));
+                Jcrop_api.release();
+                Jcrop_api.disable();
+
+                return false;
+
+            });
+            $("#rotate").click(function () {
+                if ($(this).hasClass('selected')) {
+                    deselect($(this));
+                } else {
+                    $(this).addClass('selected');
+                    $('.pop').slideFadeToggle();
+                }
+            });
+            $("#resize").click(function () {
+                if ($(this).hasClass('selected')) {
+                    deselectresize($(this));
+                } else {
+                    $(this).addClass('selected');
+                    $('.popresize').slideFadeToggle();
+                }
+            });
+
+            $("#Sharpen").click(function () {
+                if ($(this).hasClass('selected')) {
+                    deselectsharpen($(this));
+                } else {
+                    $(this).addClass('selected');
+                    $('.popsharpen').slideFadeToggle();
+                }
+            });
+            function deselect(e) {
+
+                $('.pop').slideFadeToggle(function () {
+                    e.removeClass('selected');
+                });
+            }
+            function deselect1(e) {
+
+                $('.pop1').slideFadeToggle(function () {
+                    e.removeClass('selected');
+                });
+            }
+            function deselectdow(e) {
+
+                $('.pop2').slideFadeToggle(function () {
+                    e.removeClass('selected');
+                });
+            }
+            function deselectsaturate(e) {
+
+                $('.popsaturate').slideFadeToggle(function () {
+                    e.removeClass('selected');
+                });
+            }
+            function deselectresize(e) {
+
+                $('.popresize').slideFadeToggle(function () {
+                    e.removeClass('selected');
+                });
+            }
+            function deselectsharpen(e) {
+
+                $('.popsharpen').slideFadeToggle(function () {
+                    e.removeClass('selected');
+                });
+            }
+            $('.rcancle').on('click', function () {
+                alert("hellocancle");
+                //canvas = document.getElementById("canvas");
+                //ctx = canvas.getContext("2d");
+                ////ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ////ctx.save();
+                //ctx.clearRect(0, 0, canvas.width, canvas.height);
+                //ctx.save();
+                //ctx.translate(canvas.width / 2, canvas.height / 2);
+                //var image = new Image();
+                //image.src = dataURL;
+                //ctx.drawImage(image, -image.width / 2, -image.width / 2);
+                //ctx.restore();
+                deselectresize($('#resize'));
+
+                return false;
+            });
+            $('.scancle').on('click', function () {
+                alert("hellocancle");
+                deselectsharpen($('#Sharpen'));
+                return false;
+            });
+            $('.cancle').on('click', function () {
+                alert("hellocancle");
+                //canvas = document.getElementById("canvas");
+                //ctx = canvas.getContext("2d");
+                ////ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ////ctx.save();
+                //ctx.clearRect(0, 0, canvas.width, canvas.height);
+                //ctx.save();
+                //ctx.translate(canvas.width / 2, canvas.height / 2);
+                //var image = new Image();
+                //image.src = dataURL;
+                //ctx.drawImage(image, -image.width / 2, -image.width / 2);
+                //ctx.restore();
+                deselect1($('#crop'));
+                Jcrop_api.release();
+                Jcrop_api.disable();
+                return false;
+            });
+            $('.cancledow').on("click", function () {
+                deselectdow($('#save'));
+
+                return false;
+            });
+            $('.csaturate').on("click", function () {
+                alert("hrll");
+                document.getElementById("canvas").removeAttribute("style", "-webkit-filter:saturate(" + this.value + ")");
+                document.getElementById("canvas").removeAttribute("style", "filter:saturate(" + this.value + ")");
+                deselectsaturate($('#saturate'));
+
+                return false;
+            });
+            $('.close').on('click', function () {
+                alert("hiii");
+                canvas = document.getElementById("canvas");
+                ctx = canvas.getContext("2d");
+                //ctx.clearRect(0, 0, canvas.width, canvas.height);
+                //ctx.save();
+                //ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.save();
+                ctx.translate(canvas.width / 2, canvas.height / 2);
+                var image = new Image();
+                image.src = dataURL;
+                ctx.drawImage(image, -image.width / 2, -image.width / 2);
+                ctx.restore();
+                deselect($('#rotate'));
+                return false;
+            });
+
+            $("#saverotet").click(function () {
+                canvas = document.getElementById("canvas");
+                ctx = canvas.getContext("2d");
+                var imageObj = $("#canvas")[0];
+                canvas = $("#canvas")[0];
+                if (imageObj != null) {
+
+                    //ctx.drawImage(imageObj, hdx, hdy, weight, height, 0, 0, canvas.width, canvas.height);
+                    //ctx.getImageData()
+
+                    dataURL = canvas.toDataURL("image/png");
+                    ctx.drawImage(imageObj, canvas.width, canvas.height);
+                    cPush();
+                    deselect($('#rotate'));
+                    return false;
+                    //cPush();
+
+                    //document.getElementById("sample").src = dataURL;
+                    //urlimage = dataURL;
+                    //alert(urlimage);
+                    //image.src = imageObj;
+
+
+                }
+            });
+            //Saturet
+
+            $("#saturate").click(function () {
+                //$("#canvas").addClass("saturation");
+                alert("hiii");
+                if ($(this).hasClass('selected')) {
+                    deselectsaturate($(this));
+                } else {
+                    $(this).addClass('selected');
+                    $('.popsaturate').slideFadeToggle();
+                }
+                // document.getElementById("canvas").setAttribute("style", "-webkit-filter:saturate(" +0 + ")")
+
+            });
+            document.getElementById("saturaterange").addEventListener('change', function (e) {
+                
+                var imageData = ctx.getImageData(0,0, img.width,img.height);
+                var dA = imageData.data; // raw pixel data in array
+
+                var sv = parseFloat(this.value); // saturation value. 0 = grayscale, 1 = original
+
+                var luR = 0.3086; // constant to determine luminance of red. Similarly, for green and blue
+                var luG = 0.6094;
+                var luB = 0.0820;
+
+                var az = (1 - sv) * luR + sv;
+                var bz = (1 - sv) * luG;
+                var cz = (1 - sv) * luB;
+                var dz = (1 - sv) * luR;
+                var ez = (1 - sv) * luG + sv;
+                var fz = (1 - sv) * luB;
+                var gz = (1 - sv) * luR;
+                var hz = (1 - sv) * luG;
+                var iz = (1 - sv) * luB + sv;
+
+                for (var i = 0; i < dA.length; i += 4) {
+                    var red = dA[i]; // Extract original red color [0 to 255]. Similarly for green and blue below
+                    var green = dA[i + 1];
+                    var blue = dA[i + 2];
+
+                    var saturatedRed = (az * red + bz * green + cz * blue);
+                    var saturatedGreen = (dz * red + ez * green + fz * blue);
+                    var saturateddBlue = (gz * red + hz * green + iz * blue);
+
+                    dA[i] = saturatedRed;
+                    dA[i + 1] = saturatedGreen;
+                    dA[i + 2] = saturateddBlue;
+                }
+
+                ctx.putImageData(imageData, 0, 0);
+                //document.getElementById("canvas").setAttribute("style", "-webkit-filter:saturate(" + this.value + ")");
+                //document.getElementById("canvas").setAttribute("style", "filter:saturate(" + this.value + ")");
+            }, false);
+            $("#Fresize").click(function () {
+                canvas = document.getElementById("canvas");
+                ctx = canvas.getContext("2d");
+                var imageObj = $("#canvas")[0];
+                canvas = $("#canvas")[0];
+                var txtrwidth = document.getElementById("txtresizewidth").value;
+                var txtrheight = document.getElementById("txtresizeheight").value;
+                if (imageObj != null) {
+
+                    //ctx.drawImage(imageObj, hdx, hdy, weight, height, 0, 0, canvas.width, canvas.height);
+                    //ctx.getImageData()
+
+                    dataURL = canvas.toDataURL("image/png");
+                    ctx.drawImage(imageObj, 0, 0, txtrwidth, txtrwidth);
+                    cPush();
+                    deselectresize($('#resize'));
+                    return false;
+                    //cPush();
+
+                    //document.getElementById("sample").src = dataURL;
+                    //urlimage = dataURL;
+                    //alert(urlimage);
+                    //image.src = imageObj;
+
+
+                }
+            });
+            $("#Fsharpen").click(function () {
+                canvas = document.getElementById("canvas");
+                ctx = canvas.getContext("2d");
+                var imageObj = $("#canvas")[0];
+                canvas = $("#canvas")[0];
+                ctx.save();
+                if (imageObj != null) {
+
+                    //ctx.drawImage(imageObj, hdx, hdy, weight, height, 0, 0, canvas.width, canvas.height);
+                    //ctx.getImageData()
+
+                    dataURL = canvas.toDataURL("image/png");
+                    cPush();
+                    deselectsharpen($('#Sharpen'));
+                    return false;
+
+                }
+            });
+            $("#Fsaturate").click(function () {
+                canvas = document.getElementById("canvas");
+                ctx = canvas.getContext("2d");
+                var imageObj = $("#canvas")[0];
+                canvas = $("#canvas")[0];
+                if (imageObj != null) {
+
+                    //ctx.drawImage(imageObj, hdx, hdy, weight, height, 0, 0, canvas.width, canvas.height);
+                    //ctx.getImageData()
+
+                    ctx.save();
+                    dataURL = canvas.toDataURL("image/png");
+
+                    document.getElementById("sample").src = dataURL;
+                    document.getElementById("canvas").removeAttribute("style", "-webkit-filter:saturate(" + this.value + ")");
+                    document.getElementById("canvas").removeAttribute("style", "filter:saturate(" + this.value + ")");
+                    ctx.drawImage(imageObj, 0, 0, canvas.width, canvas.height);
+                    ctx.restore();
+                    cPush();
+
+                    deselectsaturate($('#saturate'));
+                    return false;
+                    //cPush();
+
+                    //document.getElementById("sample").src = dataURL;
+                    //urlimage = dataURL;
+                    //alert(urlimage);
+                    //image.src = imageObj;
+
+
+                }
+            });
+            $.fn.slideFadeToggle = function (easing, callback) {
+                return this.animate({ opacity: 'toggle', height: 'toggle' }, 'fast', easing, callback);
+            };
+            //for save image as png/jpg
+            var button = document.getElementById('btn-download');
+            button.addEventListener('click', function (e) {
+                var radioValue = $("input[name='ftype']:checked").val();
+                alert(radioValue);
+                var fname = document.getElementById("fname").value;
+                var dataURL = canvas.toDataURL('image/png');
+                button.href = dataURL;
+                button.download = fname + "." + radioValue;
+                deselectdow($('#save'));
+            });
+
+
+
+
+        });
+
+        function sharpen(ctx, w, h, mix) {
+
+            var weights = [0, -1, 0, -1, 5, -1, 0, -1, 0],
+                katet = Math.round(Math.sqrt(weights.length)),
+                half = (katet * 0.5) | 0,
+                dstData = ctx.createImageData(w, h),
+                dstBuff = dstData.data,
+                srcBuff = ctx.getImageData(0, 0, w, h).data,
+                y = h;
+
+            while (y--) {
+
+                x = w;
+
+                while (x--) {
+
+                    var sy = y,
+                        sx = x,
+                        dstOff = (y * w + x) * 4,
+                        r = 0,
+                        g = 0,
+                        b = 0,
+                        a = 0;
+
+                    for (var cy = 0; cy < katet; cy++) {
+                        for (var cx = 0; cx < katet; cx++) {
+
+                            var scy = sy + cy - half;
+                            var scx = sx + cx - half;
+
+                            if (scy >= 0 && scy < h && scx >= 0 && scx < w) {
+
+                                var srcOff = (scy * w + scx) * 4;
+                                var wt = weights[cy * katet + cx];
+
+                                r += srcBuff[srcOff] * wt;
+                                g += srcBuff[srcOff + 1] * wt;
+                                b += srcBuff[srcOff + 2] * wt;
+                                a += srcBuff[srcOff + 3] * wt;
+                            }
+                        }
+                    }
+
+                    dstBuff[dstOff] = r * mix + srcBuff[dstOff] * (1 - mix);
+                    dstBuff[dstOff + 1] = g * mix + srcBuff[dstOff + 1] * (1 - mix);
+                    dstBuff[dstOff + 2] = b * mix + srcBuff[dstOff + 2] * (1 - mix)
+                    dstBuff[dstOff + 3] = srcBuff[dstOff + 3];
+                }
+            }
+
+            ctx.putImageData(dstData, 0, 0);
+        }
+        /// adjustable sharpening - update cached source
+        function updatesharp() {
+            //ctx.drawImage(offScreen, 0, 0);
+            canvas = document.getElementById("canvas");
+            ctx = canvas.getContext("2d");
+
+            alert(mix.value);
+            sharpen(ctx, canvas.width, canvas.height, parseInt(mix.value) * 0.01);
+        }
+        //for Undo Redo
+        function cPush() {
+            alert("hellocpush");
+            //debugger;
+            cStep++;
+            if (cStep < cPushArray.length) { cPushArray.length = cStep; }
+            cPushArray.push(document.getElementById('canvas').toDataURL());
+            document.title = cStep + ":" + cPushArray.length;
+        }
+        function cUndo() {
+            alert("hiiiundo");
+            //debugger;
+            if (cStep > 0) {
+                cStep--;
+                canvas = document.getElementById("canvas");
+                ctx = canvas.getContext("2d");
+                var canvasPic = new Image();
+                canvasPic.src = cPushArray[cStep];
+                document.getElementById("sample").src = cPushArray[cStep];
+                canvasPic.onload = function () {
+
+                    ctx.drawImage(canvasPic, 0, 0, canvas.width, canvas.height);
+                }
+                document.title = cStep + ":" + cPushArray.length;
+            }
+        }
+        function cRedo() {
+            if (cStep < cPushArray.length - 1) {
+                cStep++;
+                canvas = document.getElementById("canvas");
+                ctx = canvas.getContext("2d");
+                var canvasPic = new Image();
+                canvasPic.src = cPushArray[cStep];
+                document.getElementById("sample").src = cPushArray[cStep];
+                canvasPic.onload = function () { ctx.drawImage(canvasPic, 0, 0, canvas.width, canvas.height); }
+                document.title = cStep + ":" + cPushArray.length;
+            }
+        }
+        function txtwidthchange() {
+
+            txtwidth = document.getElementById("txtw").value;
+            //    var txtheight = document.getElementById("txth").value;
+        }
+
+    </script>
+    <style type="text/css">
+        a.selected {
+            background-color: #1F75CC;
+            color: white;
+            z-index: 100;
+        }
+
+        .messagepop {
+            background-color: #FFFFFF;
+            border: 1px solid #999999;
+            cursor: default;
+            display: none;
+            margin-top: -151px;
+            margin-left: 100px;
+            position: absolute;
+            text-align: left;
+            /*width: 394px;*/
+            z-index: 50;
+            padding: 25px 25px 20px;
+        }
+
+        .messagepop1 {
+            background-color: #FFFFFF;
+            border: 1px solid #999999;
+            cursor: default;
+            display: none;
+            margin-top: 81px;
+            margin-left: 100px;
+            position: absolute;
+            text-align: left;
+            /*width: 394px;*/
+            z-index: 50;
+            padding: 25px 25px 20px;
+        }
+
+        .messagepopdow {
+            background-color: #FFFFFF;
+            border: 1px solid #999999;
+            cursor: default;
+            display: none;
+            margin-top: 81px;
+            margin-left: 100px;
+            position: absolute;
+            text-align: left;
+            /*width: 394px;*/
+            z-index: 50;
+            padding: 25px 25px 20px;
+        }
+
+        .messagepopresize {
+            background-color: #FFFFFF;
+            border: 1px solid #999999;
+            cursor: default;
+            display: none;
+            margin-top: 81px;
+            margin-left: 100px;
+            position: absolute;
+            text-align: left;
+            /*width: 394px;*/
+            z-index: 50;
+            padding: 25px 25px 20px;
+        }
+
+        .messagepopsharpen {
+            background-color: #FFFFFF;
+            border: 1px solid #999999;
+            cursor: default;
+            display: none;
+            margin-top: 81px;
+            margin-left: 100px;
+            position: absolute;
+            text-align: left;
+            /*width: 394px;*/
+            z-index: 50;
+            padding: 25px 25px 20px;
+        }
+
+        .messagepopsaturate {
+            background-color: #FFFFFF;
+            border: 1px solid #999999;
+            cursor: default;
+            display: none;
+            margin-top: 276px;
+            margin-left: 130px;
+            position: absolute;
+            text-align: left;
+            /*width: 394px;*/
+            z-index: 50;
+            padding: 25px 25px 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 3px;
+            padding-left: 15px;
+            text-indent: -15px;
+        }
+
+        .messagepop p, .messagepop.div {
+            border-bottom: 1px solid #EFEFEF;
+            margin: 8px 0;
+            padding-bottom: 8px;
+        }
+
+        .input[type='range'] {
+            -webkit-appearance: slider-vertical;
+            background-color: #ccc;
+            height: 158px;
+            width: 2px;
+            margin: 8px auto;
+        }
+
+        input[type='range']::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            border-radius: 20px;
+            background-color: #3ebede;
+            height: 30px;
+            width: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div class="col-sm-6">
+        <a id="rotate" class="btn btn-info btn-lg">Rotated</a><br />
+        <br />
+
+        <button id="crop" type="button" class="btn btn-info btn-lg" data-toggle="modal" data-backdrop="static" data-target="#myModal">Crop</button><br /><br />
+        <button id="resize" class="btn btn-info btn-lg">Resize</button><br /><br />
+        <button id="Sharpen" class="btn btn-info btn-lg">Sharpen</button><br /><br />
+        <button id="saturate" class="btn btn-info btn-lg">Saturation</button><br /><br />
+        <button id="save" class="btn btn-info btn-lg">Save</button><br /><br />
+
+        <button onclick="javascript:cUndo();return false;" class="btn btn-info btn-sm">Undo</button>
+        <button onclick="javascript:cRedo();return false;" class="btn btn-info btn-sm">Redo</button>
+        <div class="messagepop pop">
+            @*<p><label for="email">Width</label><input type="text" id="txtw" value="200" /></p>
+                <p> <label for="body">Height</label> <input type="text" id="txth" value="200" /></p>*@
+            <p><button id="clockwise" class="btn btn-info btn-sm">Rotate right</button><br /><br /></p>
+            <p><button id="counterclockwise" class="btn btn-info btn-sm">Rotate left</button><br /><br /></p>
+            <p> <button id="saverotet" class="btn btn-info btn-sm">Save</button>  <button id="Cancle" class="close btn btn-info btn-sm">Cancle</button></p>
+        </div>
+
+    </div>
+
+    <div class="messagepop1 pop1">
+        <p><label for="email">Width</label><input type="text" id="txtw" onchange="javascript:txtwidthchange();return false;" value="200" /></p>
+        <p> <label for="body">Height</label> <input type="text" id="txth" value="200" /></p>
+        <p><button id="fcrop" class="btn btn-info btn-sm">Apply</button> <button id="Cancle" class="cancle btn btn-info btn-sm">Cancle</button></p>
+    </div>
+    <div class="messagepopdow pop2">
+        <p><label for="filename">File Name</label><input type="text" id="fname" value="" /></p>
+        <p><input type="radio" name="ftype" value="png" checked />Png &nbsp;&nbsp;&nbsp;&nbsp; <input type="radio" name="ftype" value="jpg" />Jpg</p>
+        <p> <a href="#" class="btn btn-info btn-sm" id="btn-download" download="my-file-name.png">Download</a>  <button id="Cancle" class="cancledow">Cancle</button></p>
+    </div>
+    <div class="messagepopresize popresize">
+        <p><label>Width</label><input type="text" id="txtresizewidth" value="" /></p>
+        <p> <label>Height</label> <input type="text" id="txtresizeheight" value="" /></p>
+        <p><button id="Fresize" class="btn btn-info btn-sm">Apply</button> <button id="Cancle" class="rcancle btn btn-info btn-sm">Cancle</button></p>
+    </div>
+
+    <div class="messagepopsharpen popsharpen">
+        @*<p><label>Width</label><input type="text" id="txtresizewidth" value="" /></p>
+            <p> <label>Height</label> <input type="text" id="txtresizeheight" value="" /></p>*@
+        <p>Sharpen</p>
+        <input type=range id=mix min=0 max=100 value=10 onchange="updatesharp();">
+        <p><button id="Fsharpen" class="btn btn-info btn-sm">Apply</button> <button id="Cancle" class="scancle btn btn-info btn-sm">Cancle</button></p>
+    </div>
+    <div class="messagepopsaturate popsaturate">
+        @*<p><label>Width</label><input type="text" id="txtresizewidth" value="" /></p>
+            <p> <label>Height</label> <input type="text" id="txtresizeheight" value="" /></p>*@
+        <p>saturation</p>
+        <input type=range id=saturaterange min=0 max=10 value=1 step="0.1">
+        <p><button id="Fsaturate" class="btn btn-info btn-sm">Apply</button> <button id="Cancle" class="csaturate btn btn-info btn-sm">Cancle</button></p>
+    </div>
+    <div class="container col-sm-6">
+        <span class="btn btn-success fileinput-button">
+            <i class="glyphicon glyphicon-plus"></i>
+            <span>Add files...</span>
+            <input id="fileUpload" type="file" name="img" multiple>
+        </span>
+        <br />
+        <div class="progress">
+            <div class="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%;">
+                <span class="sr-only">0% complete</span>
+            </div>
+        </div>
+
+        <canvas id="canvas" width="600" height="600"></canvas>
+        <input type=range id="scaler" value=1.00 min=0.00 max=3.00 step=0.10>
+        <input type="hidden" id="hdX" />
+        <input type="hidden" id="hdY" />
+        <input type="hidden" id="hdW" />
+        <input type="hidden" id="hdH" />
+        <img id="sample"  />
+        @*<button type="button" class="btn btn-info btn-lg" data-toggle="modal" data-target="#myModal">Open Modal</button>*@
+        <!-- Modal -->
+        @*<div class="modal fade" id="myModal" role="dialog">
+                <div class="modal-dialog">
+
+
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <button type="button" class="close" data-dismiss="modal">&times;</button>
+                            <h4 class="modal-title">Modal Header</h4>
+                        </div>
+                        <div class="modal-body">
+                            <p>Width</p>
+
+                            <input type="text" id="txtw" value="200"/>
+                            <p>Height</p>
+                            <input type="text" id="txth" value="200" />
+                            <br/>
+                            <button id="crpimg">Crop Image</button>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>*@
+
+
+    </div>
+</body>
+</html>

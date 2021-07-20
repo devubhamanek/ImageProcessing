@@ -1,0 +1,1978 @@
+﻿@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+
+<html>
+<head>
+    <meta name="viewport" content="width=device-width" />
+    <title>resize</title>
+
+    <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+    <script src="http://code.jquery.com/jquery-1.9.1.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/camanjs/4.1.2/caman.full.min.js"></script>
+    <script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+    <script src="http://jcrop-cdn.tapmodo.com/v0.9.12/js/jquery.Jcrop.min.js"></script>
+    <link rel="stylesheet" href="http://jcrop-cdn.tapmodo.com/v0.9.12/css/jquery.Jcrop.css" type="text/css" />
+    <link href="~/Content/bootstrap.min.css" rel="stylesheet" />
+    <link href="~/Content/bootstrap-theme.min.css" rel="stylesheet" />
+    <link href="~/Content/jquery.fileupload.css" rel="stylesheet" />
+    <script src="~/Scripts/jquery.ui.widget.js"></script>
+    <script src="~/Scripts/bootstrap.min.js"></script>
+    <script src="~/Scripts/jquery.fileupload.js"></script>
+    <script src="~/Scripts/fabric.min.js"></script>
+    <link href="~/css/popmenu.css" rel="stylesheet" type="text/css" />
+    <script type="text/javascript">
+        var cPushArray = new Array();
+        var cStep = -1;
+        // var urlimage="images/cat.jpg";
+        var canvas;
+        var ctx;
+        var angleInDegrees = 0;
+        var dataURL;
+        var Jcrop_api;
+        var canvaswidth = 600;
+        var canvasheight = 600;
+        var txtwidth;
+        var txtheight;
+        //for zooming
+        var zoomDelta = 0.1;
+        var currentScale = 1;
+        var startX, startY, isDown = false;
+        var prewidth;
+        var prevheight;
+        var preimageurl;
+        var img;
+        var canvas1;
+        var fonttext;
+        var fontsize;
+
+        $(document).ready(function () {
+            canvas1 = new fabric.Canvas('canvas');
+           //var canvas1 = new fabric.Canvas('canvas');
+            $("#fileUpload").change(function () {
+                
+                canvas = document.getElementById("canvas");
+                ctx = canvas.getContext("2d");
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                $("#msg").hide();
+                $('.progress').show();
+                var file = this.files[0];
+                var formData = new FormData();
+                formData.append('file', file);
+                var sFileName = file.name;
+                var sFileExtension = sFileName.split('.')[sFileName.split('.').length - 1].toLowerCase();
+                var iFileSize = file.size;
+                var iConvert = (file.size / 10485760).toFixed(2);
+                if (!(sFileExtension === "jpg" || sFileExtension === "png" || sFileExtension === "JPEG")) {
+                    $("#msg").show();
+                    document.getElementById("msg").innerHTML = "Please Select Proper File Type.Like .jpg,.png";
+                }
+
+                else if (iFileSize > 10485760) {
+                    //txt = "File type : " + sFileExtension + "\n\n";
+                    //txt += "Size: " + iConvert + " MB \n\n";
+                    // txt += "Please make sure your file is in pdf or doc format and less than 10 MB.\n\n";
+                    //alert(txt);
+                    $("#msg").show();
+                    document.getElementById("msg").innerHTML = "File Is To Large.Select Less Than 10 MB";
+
+                }
+                else {
+
+
+                    $.ajax({
+                        url: null,
+                        type: 'POST',
+                        xhr: function () {
+                            var xhr = $.ajaxSettings.xhr();
+                            if (xhr.upload) {
+
+                                xhr.upload.addEventListener('progress', function (evt) {
+
+                                    var progressvalue = parseInt(evt.loaded / evt.total * 100);
+                                    $('.progress .progress-bar').css('width', progressvalue + '%');
+                                    document.getElementById("pvalue").innerHTML = progressvalue + '% Complete';
+                                }, false);
+
+                            }
+                            return xhr;
+
+                        },
+                        success: function (data) {
+                            img = new Image(),
+                            f = file;
+                            url = window.URL || window.webkitURL,
+                            src = url.createObjectURL(f);
+                            dataURL = src;
+                            img.crossOrigin = "Anonymous";
+                            img.src = dataURL;
+                            drawimage();
+                            setTimeout(function () {
+                                $('.progress').hide();
+                                $('.progress .progress-bar').css('width', 0 + '%');
+                                document.getElementById("pvalue").innerHTML = 0;
+                            }, 1000);
+
+                        },
+                        error: function () {
+
+                        },
+                        data: formData,
+                        cache: false,
+                        contentType: false,
+                        processData: false
+                    }, 'json');
+                    //drawimage();
+                }
+            });
+            //function draw(e) {
+            //    var file = document.getElementById('fileUpload').files[0];
+
+
+            //    console.log(e);
+            //    canvas = document.getElementById("canvas");
+            //    ctx = canvas.getContext("2d");
+            //    ctx.clearRect(0, 0, canvas.width, canvas.height);
+            //    img = new Image(),
+            //    f = document.getElementById("fileUpload").files[0];
+            //    url = window.URL || window.webkitURL,
+            //    src = url.createObjectURL(f);
+
+            //    dataURL = src;
+            //    img.crossOrigin = "Anonymous";
+            //    img.src = dataURL;
+            //    var sFileName = f.name;
+            //    var sFileExtension = sFileName.split('.')[sFileName.split('.').length - 1].toLowerCase();
+            //    var iFileSize = f.size;
+            //    var iConvert = (f.size / 10485760).toFixed(2);
+            //    if (!(sFileExtension === "jpg" || sFileExtension === "png" || sFileExtension === "JPEG"))
+            //    {
+            //        alert("Only Allow jpg,png,jpeg file");
+            //    }
+
+            //    else if (iFileSize > 10485760) {
+            //        //txt = "File type : " + sFileExtension + "\n\n";
+            //        //txt += "Size: " + iConvert + " MB \n\n";
+            //        // txt += "Please make sure your file is in pdf or doc format and less than 10 MB.\n\n";
+            //        //alert(txt);
+            //        alert("file Is not MoreThen 10 mb")
+
+            //    }
+            //    else {
+
+            //        drawimage();
+            //    }
+            //}
+
+            function drawimage() {
+                debugger;
+                img.onload = function (e) {
+
+                    if (img.width > canvaswidth) {
+                        // img.style.webkitFilter = "grayscal(1px)";
+                        //alert("hello");
+
+                        canvas.width = canvaswidth;
+                        canvas.height = canvasheight;
+                        prewidth = canvas.width;
+                        prevheight = canvas.height;
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        ctx.save();
+                        dataURL = canvas.toDataURL("image/png");
+                        preimageurl = canvas.toDataURL("image/png");
+                        // document.getElementById("sample").src = dataURL;
+                        SetMinMaxRang(5, 116);
+                        cPush();
+                        
+                    }
+                    else {
+                        prewidth = img.width;
+                        prevheight = img.height;
+                        canvas.height = img.height;
+                        canvas.width = img.width;
+                        //ctx.save();
+
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        ctx.save();
+                        dataURL = canvas.toDataURL("image/png");
+                        preimageurl = canvas.toDataURL("image/png");
+                        SetMinMaxRang(77, 1598);
+                        cPush();
+                        //ctx.restore();
+                        
+                    }
+
+
+                }
+            }
+            //Click On Resize to Open Popup
+            $("#resize").click(function () {
+                if ($(this).hasClass('selected')) {
+                    deselectresize($(this));
+                } else {
+                    $(this).addClass('selected');
+                    $('.popresize').slideFadeToggle();
+
+                }
+            });
+
+            //Save Resize Image
+            $("#Fresize").click(function () {
+                canvas = document.getElementById("canvas");
+                ctx = canvas.getContext("2d");
+                var txtrwidth = document.getElementById("txtresizewidth").value;
+                var txtrheight = document.getElementById("txtresizeheight").value;
+
+                if (document.getElementById('byper').checked) {
+
+
+                    var originalwidth = canvas.width;
+                    var originalheight = canvas.height;
+
+
+                    txtrwidth = (parseInt(originalwidth) * parseInt(txtrwidth)) / parseInt(100);
+                    txtrheight = (parseInt(originalheight) * parseInt(txtrheight)) / parseInt(100);
+
+                }
+                if (txtrwidth > canvaswidth) {
+
+                    Caman("#canvas", function () {
+                        //this.revert(false);
+                        // this.saturation(hue);
+                        this.resize({
+                            width: canvaswidth,
+                            height: canvasheight
+                        });
+                        this.render(function () {
+                            canvas.width = canvaswidth;
+                            canvas.height = canvasheight;
+                            img.src = dataURL;
+                            img.crossOrigin = "Anonymous";
+                            img.onload = function () {
+                                //ctx.clearRect(0, 0, canvas.width, canvas.height);
+                                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                                ctx.save();
+                                dataURL = canvas.toDataURL("image/png");
+                                preimageurl = dataURL;
+                                document.getElementById("sample").src = dataURL;
+
+                                cPush();
+                                deselectresize($('#resize'));
+                            }
+
+
+                        });
+
+                    });
+
+
+                }
+                else {
+
+                    Caman("#canvas", function () {
+
+                        // this.saturation(hue);
+                        this.resize({
+                            width: txtrwidth,
+                            height: txtrheight
+                        });
+                        this.render(function () {
+
+                            canvas.width = txtrwidth;
+                            canvas.height = txtrheight;
+                            img.src = dataURL;
+                            img.crossOrigin = "Anonymous";
+                            img.onload = function () {
+                                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                                ctx.save();
+                                dataURL = canvas.toDataURL("image/png");
+                                preimageurl = dataURL;
+                                document.getElementById("sample").src = dataURL;
+
+                                cPush();
+                                deselectresize($('#resize'));
+                            }
+
+
+                        });
+
+
+                    });
+                }
+
+            });
+            //Close Resize Popup
+            function deselectresize(e) {
+                $('.popresize').slideFadeToggle(function () {
+                    e.removeClass('selected');
+                });
+            }
+            function SetMinMaxRang(min, max) {
+                document.getElementById('zoom').min = min;
+                document.getElementById('zoom').max = max;
+            }
+            //Cancle Resize Image
+            $('.rcancle').on('click', function () {
+
+                //canvas = document.getElementById("canvas");
+                //ctx = canvas.getContext("2d");
+                ////ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ////ctx.save();
+                //ctx.clearRect(0, 0, canvas.width, canvas.height);
+                //ctx.save();
+                //ctx.translate(canvas.width / 2, canvas.height / 2);
+                //var image = new Image();
+                //image.src = dataURL;
+                //ctx.drawImage(image, -image.width / 2, -image.width / 2);
+                //ctx.restore();
+
+                deselectresize($('#resize'));
+                prevchange();
+                return false;
+            });
+
+
+            //File Upload Change Event
+            // document.getElementById("fileUpload").addEventListener("change", draw, false)
+
+            $.fn.slideFadeToggle = function (easing, callback) {
+                return this.animate({ opacity: 'toggle', height: 'toggle' }, 'fast', easing, callback);
+            };
+
+            $('#zoom').on('change', function () {
+
+                document.getElementById('lblzoom').innerHTML = this.value + "%";
+                currentScale = (this.value);
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.save();
+
+                //dataURL = canvas.toDataURL("image/png");
+                //ctx.scale(currentScale,currentScale);
+
+                //if (this.value > 100)
+                //{
+                var increasper = parseInt(this.value) - 100;
+                var widthstep = 2.75;
+                var heightstep = 1.81;
+                canvas.width = parseFloat(increasper) * parseFloat(widthstep) + parseFloat(prewidth);
+                canvas.height = parseFloat(increasper) * parseFloat(heightstep) + parseFloat(prevheight);
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                dataURL = canvas.toDataURL("Image/png");
+
+                ctx.restore();
+                //cPush();
+
+
+
+            });
+
+            //$('input[type=range]').change(applyFilters);
+            //Saturation Change Event
+            var saturateevent = document.getElementById('saturaterange');
+            saturateevent.addEventListener('change', function (e) {
+                prevchange();
+
+                var saturate = parseInt(this.value);
+                setTimeout(function () {
+
+                    Caman("#canvas", function () {
+                        //this.CanvasRenderingContext2D;
+                        this.reloadCanvasData();
+                        showloader();
+                        //this.revert(false);
+                        //  this.hue(hue);
+                        this.saturation(saturate);
+
+                        this.render(function () {
+                            hideLoader();
+                        });
+                    });
+                }, 100)
+            });
+
+            //Hue Change Event
+            var hueevent = document.getElementById('huerange');
+            hueevent.addEventListener('change', function (e) {
+                prevchange();
+                var hue = parseInt(this.value);
+                setTimeout(function () {
+
+                    Caman("#canvas", function () {
+                        //this.CanvasRenderingContext2D;
+                        this.reloadCanvasData();
+                        showloader();
+                        //this.revert(false);
+                        //  this.hue(hue);
+                        this.hue(hue);
+                        this.render(function () {
+                            hideLoader();
+                            return false;
+                        });
+                    });
+
+                }, 100)
+
+
+            });
+
+            //Bright Change Event
+            var brightevent = document.getElementById('brightrange');
+            brightevent.addEventListener('change', function (e) {
+                clearTimeout();
+                prevchange();
+
+                var bright = parseInt(this.value);
+                setTimeout(function () {
+                    Caman("#canvas", function () {
+                        //this.CanvasRenderingContext2D;
+                        this.reloadCanvasData();
+                        showloader();
+                        //this.revert(false);
+                        //  this.hue(hue);
+                        this.brightness(bright);
+
+                        this.render(function () {
+                            hideLoader();
+                        });
+                    });
+                }, 50);
+            });
+
+            //For Apply Sharpen Effect
+            var sharpenevent = document.getElementById('sharpenrange');
+            sharpenevent.addEventListener('change', function (e) {
+                clearTimeout();
+                prevchange();
+                console.log("hii");
+                var sharpen = parseInt(this.value);
+                setTimeout(function () {
+                    Caman("#canvas", function () {
+                        //this.CanvasRenderingContext2D;
+                        this.reloadCanvasData();
+                        showloader();
+                        this.sharpen(sharpen);
+
+                        this.render(function () {
+                            hideLoader();
+                        });
+                    });
+                }, 50)
+            });
+
+            //For Apply Contrast Effect
+            var contrastevent = document.getElementById('contrastrange');
+            contrastevent.addEventListener('change', function (e) {
+                clearTimeout();
+                prevchange();
+                console.log("hii");
+                var contrast = parseInt(this.value);
+                setTimeout(function () {
+                    Caman("#canvas", function () {
+                        //this.CanvasRenderingContext2D;
+                        this.reloadCanvasData();
+                        showloader();
+                        this.contrast(contrast);
+
+                        this.render(function () {
+                            hideLoader();
+                        });
+                    });
+                }, 50)
+            });
+
+            //For Apply Noise Effect
+            var noiseevent = document.getElementById('noiserange');
+            noiseevent.addEventListener('change', function (e) {
+                prevchange();
+                console.log("hii");
+                var noise = parseInt(this.value);
+                setTimeout(function () {
+                    Caman("#canvas", function () {
+                        //this.CanvasRenderingContext2D;
+                        this.reloadCanvasData();
+                        showloader();
+                        this.noise(noise);
+
+                        this.render(function () {
+                            hideLoader();
+                        });
+                    });
+                }, 50)
+            });
+
+            //For Apply Exposure Effect
+            var exposureevent = document.getElementById('exposurerange');
+            exposureevent.addEventListener('change', function (e) {
+                prevchange();
+                console.log("hii");
+                var exposure = parseInt(this.value);
+                setTimeout(function () {
+                    Caman("#canvas", function () {
+                        //this.CanvasRenderingContext2D;
+                        this.reloadCanvasData();
+                        showloader();
+                        this.exposure(exposure);
+
+                        this.render(function () {
+                            hideLoader();
+                        });
+                    });
+                }, 50)
+            });
+
+            //For Apply Sepia Effect
+            var sepiaevent = document.getElementById('sepiarange');
+            sepiaevent.addEventListener('change', function (e) {
+                prevchange();
+                console.log("hii");
+                var sepia = parseInt(this.value);
+                setTimeout(function () {
+                    Caman("#canvas", function () {
+                        //this.CanvasRenderingContext2D;
+                        this.reloadCanvasData();
+                        showloader();
+                        this.sepia(sepia);
+
+                        this.render(function () {
+                            hideLoader();
+                        });
+                    });
+                }, 50)
+            });
+
+            //Save Image PopUp
+            $("#save").click(function () {
+                if ($(this).hasClass('selected')) {
+                    deselectdow($(this));
+                } else {
+                    $(this).addClass('selected');
+                    $('.pop2').slideFadeToggle();
+                }
+            });
+            //Close Download Popup
+            function deselectdow(e) {
+
+                $('.pop2').slideFadeToggle(function () {
+                    e.removeClass('selected');
+                });
+            }
+            //Cancle Dowload 
+            $('.cancledow').on("click", function () {
+                deselectdow($('#save'));
+
+                return false;
+            });
+            //Save Image
+            var button = document.getElementById('btn-download');
+            button.addEventListener('click', function (e) {
+
+                canvas = document.getElementById("canvas");
+                ctx = canvas.getContext("2d");
+                ctx.restore();
+                var radioValue = $("input[name='ftype']:checked").val();
+                //alert(radioValue);
+                var fname = document.getElementById("fname").value;
+                dataURL = canvas.toDataURL('image/png');
+                document.getElementById("sample").src = dataURL;
+                //alert(dataURL);
+                //var camanjs = Caman('#canvas');
+                button.href = dataURL;
+                button.download = fname + "." + radioValue;
+                //Caman('#canvas', img, function () {
+                //    this.render(function () {
+
+                //        this.save("png");
+                //    });
+                //});
+                deselectdow($('#save'));
+            });
+
+            //rotate Popup
+            $("#rotate").click(function () {
+                if ($(this).hasClass('selected')) {
+                    deselect($(this));
+                } else {
+                    $(this).addClass('selected');
+                    $('.pop').slideFadeToggle();
+                }
+            });
+            //Close Rotate Popup
+            function deselect(e) {
+
+                $('.pop').slideFadeToggle(function () {
+                    e.removeClass('selected');
+                });
+            }
+
+            //for Hue Popup
+            $("#hue").click(function () {
+                //$("#canvas").addClass("saturation");
+                if ($(this).hasClass('selected')) {
+                    deselecthue($(this));
+                } else {
+                    $(this).addClass('selected');
+                    $('.pophue').slideFadeToggle();
+                }
+                // document.getElementById("canvas").setAttribute("style", "-webkit-filter:saturate(" +0 + ")")
+
+            });
+            //Close Hue Popup
+            function deselecthue(e) {
+
+                $('.pophue').slideFadeToggle(function () {
+                    e.removeClass('selected');
+                });
+            }
+            //Cancle Hue 
+            $('.chue').on("click", function () {
+                document.getElementById("huerange").value = 0;
+                deselecthue($('#hue'));
+                prevchange();
+
+                return false;
+            });
+            //Save Hue Effect
+            $("#Fhue").click(function () {
+
+                ctx.save();
+                //var camanjs = Caman('#canvas');
+                //dataURL = camanjs.toBase64();
+                dataURL = canvas.toDataURL("image/png");
+                preimageurl = dataURL;
+                document.getElementById("sample").src = dataURL;
+
+                //ctx.drawImage(imageObj, 0, 0, canvas.width, canvas.height);
+                //ctx.restore();
+                cPush();
+                document.getElementById("huerange").value = 0;
+                deselecthue($('#hue'));
+                return false;
+
+
+            });
+
+            //for sepia filer popup
+            $("#sepia").click(function () {
+                //$("#canvas").addClass("saturation");
+                if ($(this).hasClass('selected')) {
+                    deselectsepia($(this));
+                } else {
+                    $(this).addClass('selected');
+                    $('.popsepia').slideFadeToggle();
+                }
+            });
+
+            //Save Sepia Effect
+            $("#Fsepia").click(function () {
+                ctx.save();
+                //var camanjs = Caman('#canvas');
+                // dataURL = camanjs.toBase64();
+                dataURL = canvas.toDataURL("image/png");
+                preimageurl = dataURL;
+                document.getElementById("sample").src = dataURL;
+                document.getElementById("sepiarange").value = 0;
+                //ctx.drawImage(imageObj, 0, 0, canvas.width, canvas.height);
+                //ctx.restore();
+                cPush();
+                deselectsepia($('#sepia'));
+                return false;
+            });
+
+            //Cancel Sepia Effec
+            $('.csepia').on("click", function () {
+                document.getElementById("sepiarange").value = 0;
+                deselectsepia($('#sepia'));
+                prevchange();
+
+                return false;
+            });
+
+            //Close Sepia Popup
+            function deselectsepia(e) {
+
+                $('.popsepia').slideFadeToggle(function () {
+                    e.removeClass('selected');
+                });
+            }
+
+            //for Exposure filer popup
+            $("#exposure").click(function () {
+                //$("#canvas").addClass("saturation");
+                if ($(this).hasClass('selected')) {
+                    deselectexposure($(this));
+                } else {
+                    $(this).addClass('selected');
+                    $('.popexposure').slideFadeToggle();
+                }
+            });
+            //Save Exposure Effect 
+            $("#Fexposure").click(function () {
+               // alert("hello");
+                ctx.save();
+                //var camanjs = Caman('#canvas');
+                // dataURL = camanjs.toBase64();
+                dataURL = canvas.toDataURL("image/png");
+                preimageurl = dataURL;
+                document.getElementById("sample").src = dataURL;
+                document.getElementById("exposurerange").value = 0;
+                //ctx.drawImage(imageObj, 0, 0, canvas.width, canvas.height);
+                //ctx.restore();
+                cPush();
+                deselectexposure($('#exposure'));
+                return false;
+            });
+
+            //Cancel Exposure Effect
+            $('.cexposure').on("click", function () {
+                document.getElementById("exposurerange").value = 0;
+                deselectexposure($('#exposure'));
+                prevchange();
+
+                return false;
+            });
+
+            //Close Exposure Popup
+            function deselectexposure(e) {
+
+                $('.popexposure').slideFadeToggle(function () {
+                    e.removeClass('selected');
+                });
+            }
+            //for Noise filer popup
+            $("#noise").click(function () {
+                //$("#canvas").addClass("saturation");
+                if ($(this).hasClass('selected')) {
+                    deselectnoise($(this));
+                } else {
+                    $(this).addClass('selected');
+                    $('.popnoise').slideFadeToggle();
+                }
+            });
+
+            //Save Noise Effect
+            $("#Fnoise").click(function () {
+                ctx.save();
+                //var camanjs = Caman('#canvas');
+                // dataURL = camanjs.toBase64();
+                dataURL = canvas.toDataURL("image/png");
+                preimageurl = dataURL;
+                document.getElementById("sample").src = dataURL;
+                document.getElementById("noiserange").value = 0;
+                //ctx.drawImage(imageObj, 0, 0, canvas.width, canvas.height);
+                //ctx.restore();
+                cPush();
+                deselectnoise($('#noise'));
+                return false;
+            });
+            //Cancel Noise Effect
+            $('.cnoise').on("click", function () {
+                document.getElementById("noiserange").value = 0;
+                deselectnoise($('#noise'));
+                prevchange();
+
+                return false;
+            });
+            //Close Noise Popup
+            function deselectnoise(e) {
+
+                $('.popnoise').slideFadeToggle(function () {
+                    e.removeClass('selected');
+                });
+            }
+            //forcontrast filer popup
+            $("#contrast").click(function () {
+                //$("#canvas").addClass("saturation");
+                if ($(this).hasClass('selected')) {
+                    deselectsharpen($(this));
+                } else {
+                    $(this).addClass('selected');
+                    $('.popcontrast').slideFadeToggle();
+                }
+            });
+            $("#Fcontrast").click(function () {
+                ctx.save();
+                //var camanjs = Caman('#canvas');
+                // dataURL = camanjs.toBase64();
+                dataURL = canvas.toDataURL("image/png");
+                preimageurl = dataURL;
+                document.getElementById("sample").src = dataURL;
+                document.getElementById("contrastrange").value = 0;
+                //ctx.drawImage(imageObj, 0, 0, canvas.width, canvas.height);
+                //ctx.restore();
+                cPush();
+                deselectcontrast($('#contrast'));
+                return false;
+            });
+            $('.ccontrast').on("click", function () {
+                document.getElementById("contrastrange").value = 0;
+                deselectcontrast($('#contrast'));
+                prevchange();
+
+                return false;
+            });
+            function deselectcontrast(e) {
+
+                $('.popcontrast').slideFadeToggle(function () {
+                    e.removeClass('selected');
+                });
+            }
+
+            //for sharpen filter pop
+            $("#sharpen").click(function () {
+                //$("#canvas").addClass("saturation");
+                if ($(this).hasClass('selected')) {
+                    deselectsharpen($(this));
+                } else {
+                    $(this).addClass('selected');
+                    $('.popsharpen').slideFadeToggle();
+                }
+            });
+            //Save Sharpen Effect
+            $("#Fsharpen").click(function () {
+                ctx.save();
+                //var camanjs = Caman('#canvas');
+                // dataURL = camanjs.toBase64();
+                dataURL = canvas.toDataURL("image/png");
+                preimageurl = dataURL;
+                document.getElementById("sample").src = dataURL;
+                document.getElementById("sharpenrange").value = 0;
+                //ctx.drawImage(imageObj, 0, 0, canvas.width, canvas.height);
+                //ctx.restore();
+                cPush();
+                deselectsharpen($('#sharpen'));
+                return false;
+            });
+
+            //Cancel Sharpen Effect
+            $('.csharpen').on("click", function () {
+                document.getElementById("sharpenrange").value = 0;
+                deselectsharpen($('#sharpen'));
+                prevchange();
+
+                return false;
+            });
+            //Close Sharpen Effect
+            function deselectsharpen(e) {
+
+                $('.popsharpen').slideFadeToggle(function () {
+                    e.removeClass('selected');
+                });
+            }
+
+            //For Brightness
+            $("#bright").click(function () {
+                //$("#canvas").addClass("saturation");
+                if ($(this).hasClass('selected')) {
+                    deselectbright($(this));
+                } else {
+                    $(this).addClass('selected');
+                    $('.popbright').slideFadeToggle();
+                }
+            });
+            $("#Fbright").click(function () {
+                ctx.save();
+                //var camanjs = Caman('#canvas');
+                // dataURL = camanjs.toBase64();
+                dataURL = canvas.toDataURL("image/png");
+                preimageurl = dataURL;
+                document.getElementById("sample").src = dataURL;
+
+                //ctx.drawImage(imageObj, 0, 0, canvas.width, canvas.height);
+                //ctx.restore();
+                cPush();
+                document.getElementById("brightrange").value = 1;
+                deselectbright($('#hue'));
+                return false;
+
+
+            });
+            $('.cbright').on("click", function () {
+                document.getElementById("brightrange").value = 1;
+                deselectbright($('#hue'));
+                prevchange();
+
+                return false;
+            });
+            function deselectbright(e) {
+
+                $('.popbright').slideFadeToggle(function () {
+                    e.removeClass('selected');
+                });
+            }
+
+            $("#saturate").click(function () {
+                //$("#canvas").addClass("saturation")
+
+                if ($(this).hasClass('selected')) {
+                    deselectsaturate($(this));
+                } else {
+                    $(this).addClass('selected');
+                    $('.popsaturate').slideFadeToggle();
+                }
+            });
+            //document.getElementById("saturaterange").addEventListener('change', function (e) {
+            //    alert("saturate");
+            //    alert(this.value);
+            //    var satval = parseInt(this.value);
+            //    Caman("#canvas", function () {
+
+            //        this.revert(false);
+            //        this.saturation(satval).render();
+            //    });
+            //});
+
+            //Close Saturation 
+            function deselectsaturate(e) {
+
+                $('.popsaturate').slideFadeToggle(function () {
+                    e.removeClass('selected');
+                });
+            }
+
+            //Close Saturation Popup
+            $('.csaturate').on("click", function () {
+                document.getElementById("saturaterange").value = 1;
+
+                deselectsaturate($('#saturate'));
+                prevchange();
+
+
+            });
+            //Save Saturation Effect
+            $("#Fsaturate").click(function () {
+                ctx.save();
+                //var camanjs = Caman('#canvas');
+                //             dataURL = camanjs.toBase64();
+                dataURL = canvas.toDataURL("image/png");
+                preimageurl = dataURL;
+                //dataURL = canvas.toDataURL("image/png");
+                document.getElementById("sample").src = dataURL;
+                cPush();
+                document.getElementById("saturaterange").value = 1;
+                deselectsaturate($('#saturate'));
+                return false;
+            });
+            //clock Wise Rotation
+            $("#clockwise").click(function () {
+
+                ////angleInDegrees += 90;
+
+                canvas = document.getElementById("canvas");
+                ctx = canvas.getContext("2d");
+
+                //Caman("#canvas", function () {
+                //    this.rotate(90);
+                //    this.render();
+                //    ctx.save();
+                //});
+                angleInDegrees += 90;
+                //drawRotated(angleInDegrees);
+                img.src = dataURL;
+                img.crossOrigin = "Anonymous";
+                img.onload = function () {
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+
+                    if (angleInDegrees >= 360)
+                        angleInDegrees = 0;
+                    if (angleInDegrees === 0 || angleInDegrees === 180) {
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                    }
+                    else {
+                        // swap
+                        
+                        canvas.width = img.height;
+                        canvas.height = img.width;
+
+                    }
+                    ctx.save();
+                    // you want to rotate around center of canvas
+                    ctx.translate(canvas.width / 2, canvas.height / 2);
+
+                    ctx.rotate(angleInDegrees * Math.PI / 180);
+                    ctx.drawImage(img, -img.width * 0.5, -img.height * 0.5);
+                    ctx.restore();
+                }
+
+
+
+
+            });
+            //Counter Clock WiseRotatetion
+            $("#counterclockwise").click(function () {
+                canvas = document.getElementById("canvas");
+                ctx = canvas.getContext("2d");
+                angleInDegrees -= 90;
+                //drawRotated(angleInDegrees);
+                img.src = dataURL;
+                img.crossOrigin = "Anonymous";
+                img.onload = function () {
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+
+                    if (angleInDegrees <= -360)
+
+                        angleInDegrees = 0;
+
+                    if (angleInDegrees === 0 || angleInDegrees === -180) {
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                    }
+                    else {
+                        // swap
+
+                        canvas.width = img.height;
+                        canvas.height = img.width;
+
+                    }
+                    ctx.save();
+                    // you want to rotate around center of canvas
+                    ctx.translate(canvas.width / 2, canvas.height / 2);
+
+                    ctx.rotate(angleInDegrees * Math.PI / 180);
+                    ctx.drawImage(img, -img.width * 0.5, -img.height * 0.5);
+                    ctx.restore();
+                }
+                //alert("hii");
+
+                //Caman("#canvas", function () {
+                //    this.rotate(-90);
+                //    this.render(function () {
+                //        ctx.save();
+                //        dataURL = canvas.toDataURL("image/png");
+                //        preimageurl = dataURL;
+                //        document.getElementById("sample").src = dataURL;
+                //        cPush();
+                //    });
+
+                //});
+            });
+
+            // function drawRotated(angleInDegrees) {
+
+            //var imageObj = $("#canvas")[0];
+            //alert(angleInDegrees);
+            //ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+
+
+            // }
+
+            //Close Rotate Effect
+            $('.close').on('click', function () {
+
+                prevchange();
+                deselect($('#rotate'));
+            });
+            //Save Rotate Effect
+            $("#saverotet").click(function () {
+                canvas = document.getElementById("canvas");
+                ctx = canvas.getContext("2d");
+                //alert("save");
+                // var camanjs = Caman("#canvas");
+                ctx.save();
+                dataURL = canvas.toDataURL();
+                preimageurl = dataURL;
+                //document.getElementById("sample").src = dataURL;
+                cPush();
+                document.getElementById("sample").src = dataURL;
+                deselect($('#rotate'));
+
+            });
+
+            //Crop Canvas Image
+            $("#crop").click(function () {
+                if ($(this).hasClass('selected')) {
+                    deselect1($(this));
+                }
+                else {
+                    $(this).addClass('selected');
+                    $('.pop1').slideFadeToggle();
+                }
+                txtwidth = document.getElementById("txtw").value;
+                txtheight = document.getElementById("txth").value;
+                Jcrop_api = $.Jcrop('#canvas', {
+
+                    onSelect: Croparea,
+                    allowSelect: true,
+                    setSelect: [50, 50, txtwidth, txtheight],
+                    allowMove: true,
+                    //allowRes: true,
+                    aspectRatio: 1
+                });
+            });
+            //Selecte CropArea
+            function Croparea(c) {
+                $('#hdX').val(c.x);
+                $('#hdY').val(c.y);
+                $('#hdW').val(c.w);
+                $('#hdH').val(c.h);
+                document.getElementById("txtw").value = c.w;
+                document.getElementById("txth").value = c.h;
+            }
+            //Save Crop Effect
+            $("#fcrop").click(function () {
+                canvas = document.getElementById("canvas");
+                ctx = canvas.getContext("2d");
+                var height = $('#hdH').val();
+                var weight = $('#hdW').val();
+                var hdx = $('#hdX').val();
+                var hdy = $('#hdY').val();
+                img.src = dataURL;
+                img.crossOrigin = "Anonymous";
+                img.onload = function () {
+
+                    //img.onload = function () {
+                    ctx.drawImage(img, hdx, hdy, weight, height, 0, 0, canvas.width, canvas.height);
+                    //}
+                    ctx.save();
+                    dataURL = canvas.toDataURL("image/png");
+                    preimageurl = dataURL;
+                    document.getElementById("sample").src = dataURL;
+                    $('#canvas').removeAttr('style');
+                    $('.jcrop-holder').removeAttr('style');
+                    $(".jcrop-tracker").css("z-index", "");
+                    $("div").css("z-index", "");
+                    Jcrop_api.release();
+                    Jcrop_api.disable();
+
+                    cPush();
+                }
+
+                deselect1($('#crop'));
+
+            });
+            //Close Crop Popup
+            function deselect1(e) {
+                $('.pop1').slideFadeToggle(function () {
+                    e.removeClass('selected');
+                });
+            }
+            //Cancel Crop
+            $('.cancle').on('click', function () {
+
+                deselect1($('#crop'));
+                Jcrop_api.release();
+                Jcrop_api.disable();
+
+            });
+
+            $("#satu").click(function () {
+
+                var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                var dA = imageData.data; // raw pixel data in array
+
+                var sv = 10; // saturation value. 0 = grayscale, 1 = original
+
+                var luR = 0.3086; // constant to determine luminance of red. Similarly, for green and blue
+                var luG = 0.6094;
+                var luB = 0.0820;
+
+                var az = (1 - sv) * luR + sv;
+                var bz = (1 - sv) * luG;
+                var cz = (1 - sv) * luB;
+                var dz = (1 - sv) * luR;
+                var ez = (1 - sv) * luG + sv;
+                var fz = (1 - sv) * luB;
+                var gz = (1 - sv) * luR;
+                var hz = (1 - sv) * luG;
+                var iz = (1 - sv) * luB + sv;
+
+                for (var i = 0; i < dA.length; i += 4) {
+                    var red = dA[i]; // Extract original red color [0 to 255]. Similarly for green and blue below
+                    var green = dA[i + 1];
+                    var blue = dA[i + 2];
+
+                    var saturatedRed = (az * red + bz * green + cz * blue);
+                    var saturatedGreen = (dz * red + ez * green + fz * blue);
+                    var saturateddBlue = (gz * red + hz * green + iz * blue);
+
+                    dA[i] = saturatedRed;
+                    dA[i + 1] = saturatedGreen;
+                    dA[i + 2] = saturateddBlue;
+                }
+
+                ctx.putImageData(imageData, 0, 0);
+                cPush();
+            });
+            $("#rsatu").click(function () {
+
+            });
+            $("#fbold").click(function () {
+                //alert()
+                obj.fontSize = "45px";
+            });
+            $('#fstyle').keyup(function () {
+                var val = $(this).val();
+                if (isNaN(val)) {
+                    alert('please enter number');
+                    $(this).val('');
+                }
+                var activeObject = canvas1.getActiveObject();
+                activeObject.fontSize = val;
+                canvas1.renderAll();
+            });
+
+            $("#addtext").click(function () {
+                alert("hello");
+                document.getElementById("sample").src = preimageurl;
+                
+               // canvas1.renderOnAddition = true;
+                
+                //fabric.Image.fromURL(preimageurl, function (img1) {
+                //    var imgX = img1.set({
+                //        top: 0,
+                //        left: 0,
+
+                //    });
+                //    imgX.set('selectable', false); // make object unselectable
+                //    canvas1.add(imgX);
+                //    canvas1.sendToBack(imgX);
+                //});
+                fabric.Image.fromURL(preimageurl, function (img) {
+                    // img.filters.push(new fabric.Image.filters.Grayscale());
+
+                    // apply filters and re-render canvas when done
+                    img.applyFilters(canvas1.renderAll.bind(canvas1));
+                    img.set('selectable', false);
+                    canvas1.add(img);
+                    canvas1.sendToBack(img);
+                });
+                var myobj = new fabric.IText("COVER", {
+                    fontSize: 70,
+                    fill: '#ff0000',
+                    fontFamily: 'Arial',
+                    fontWeight: 'normal',
+                    textAlign: 'left',
+                //ctx.textBaseline = 'Top';
+                //ctx.fillText('Hello world!', 40, 100);
+
+                    //ctx.font = 'Bold 30px Sans-Serif';
+                    cornerColor: '#000',
+                    left: (canvas.width) / 5,
+                    top: (canvas.height) / 5
+                });
+
+                canvas1.add(myobj);
+                canvas1.setActiveObject(myobj);
+                canvas1.renderAll();
+                //canvas = document.getElementById("canvas");
+                // ctx = canvas.getContext("2d");
+                //ctx.fillStyle = '#00F';
+                //ctx.font = 'Italic 30px Sans-Serif';
+
+                //ctx.strokeText('Hello world!', 40, 50);
+               
+                //canvas = new fabric.Canvas('canvas');
+                //    width: $("#divPad").width(),
+                //    height: $("#divPad").height()
+                //});
+                
+                //canvas.on('mouse:click', addText);
+                
+               
+               // canvas.backgroundColor = new fabric.Pattern({ source: dataURL })
+                //alert("heeloo");
+                //var newText = new fabric.IText("Start typing!");
+                
+                //canvas.add(newText);
+                
+                //canvas.centerObject(newText);
+                //canvas.setActiveObject(newText);
+                //newText.selectAll();
+                //newText.enterEditing();
+                //newText.hiddenTextarea.focus();
+                //canvas.renderAll();
+                //ctx.save();
+                
+            });
+            
+
+            $(function () {
+                canvas1.on({
+                    'object:selected': function (e) {
+                        onSelected();
+                    },
+                    'selection:cleared': function (e) {
+                        onDeSelected();
+                    }
+                });
+                canvas1.on('mouse:down', function () {
+                    if (canvas1.getActiveObject()) {
+
+                    }
+                    else {
+                        //canvas1.clear();
+                        //document.getElementById("sample").src = preimageurl;
+                        //canvas1.renderOnAddition = true;
+                        //fabric.Image.fromURL(preimageurl, function (img) {
+                        //    // img.filters.push(new fabric.Image.filters.Grayscale());
+
+                        //    // apply filters and re-render canvas when done
+                        //    img.render(canvas1.renderAll.bind(canvas1));
+                        //    canvas1.add(img);
+
+                        //});
+                    }
+
+                        
+                });
+
+        
+                });
+              // canvas1.on('selection:cleared', onDeSelected);
+              // canvas1.on('object:selected', onSelected);
+              //canvas1.on('selection:created', onSelected);
+                
+            
+
+
+            //canvas1.on('object:selected', function (e) {
+            //    obj = canvas1.getActiveObject();
+            //    document.getElementById("sample").src = preimageurl;
+            //    canvas1.renderOnAddition = true;
+            //    debugger;
+            //    fabric.Image.fromURL(preimageurl, function (img1) {
+            //        var imgX = img1.set({
+            //            top: 0,
+            //            left: 0,
+
+            //        });
+            //        imgX.set('selectable', false); // make object unselectable
+            //        canvas1.add(imgX);
+            //        canvas1.sendToBack(imgX);
+            //    });
+            //    $("#txtformate").css("display", "");
+            //    document.getElementById('fstyle').value = obj.fontSize;
+            //    //drawBorder(obj);
+
+            //})
+            //canvas1.on('mouse:down', function (e) {
+            //    if (canvas1.getActiveObject()) {
+            //        alert("mousedown");
+            //    }
+            //    else {
+            //        $("#txtformate").css("display", "none");
+            //        document.getElementById("sample").src = preimageurl; 
+            //        canvas1.renderOnAddition = true;
+            //        debugger;
+            //        fabric.Image.fromURL(preimageurl, function (img1) {
+            //            var imgX = img1.set({
+            //                top: 0,
+            //                left: 0,
+
+            //            });
+            //            imgX.set('selectable', false); // make object unselectable
+            //            canvas1.add(imgX);
+            //            canvas1.sendToBack(imgX);
+            //        });
+            //    }
+            //});
+
+
+            //canvas1.on('object:modified', function (e) {
+            //    obj = canvas1.getActiveObject();
+            //    // drawBorder(obj);
+            //    alert("modified");
+            //    document.getElementById("sample").src = preimageurl;
+            //    canvas1.renderOnAddition = true;
+            //    debugger;
+            //    fabric.Image.fromURL(preimageurl, function (img1) {
+            //        var imgX = img1.set({
+            //            top: 0,
+            //            left: 0,
+
+            //        });
+            //        imgX.set('selectable', false); // make object unselectable
+            //        canvas1.add(imgX);
+            //        canvas1.sendToBack(imgX);
+            //    });
+
+            //});
+
+            //canvas1.on('object:moving', function (e) {
+
+            //    //remove the delete button while the object is being moved
+            //});
+
+            function onSelected() {
+                var obj = canvas1.getActiveObject();
+                document.getElementById("sample").src = preimageurl;
+                canvas1.renderOnAddition = true;
+                debugger;
+                fabric.Image.fromURL(preimageurl, function (img1) {
+                    var imgX = img1.set({
+                        top: 0,
+                        left: 0,
+
+                    });
+                    imgX.set('selectable', false); // make object unselectable
+                    canvas1.add(imgX);
+                    canvas1.sendToBack(imgX);
+                });
+                $("#txtformate").css("display", "");
+                document.getElementById('fstyle').value = obj.fontSize;
+
+            }
+            function onDeSelected() {
+                $("#txtformate").css("display", "none");
+                
+                alert("gfdgd");
+            }
+            $("#save2").click(function () {
+                //ctx.save();
+                ////var camanjs = Caman('#canvas');
+                ////             dataURL = camanjs.toBase64();
+                //dataURL = canvas.toDataURL("image/png");
+                //preimageurl = dataURL;
+                ////dataURL = canvas.toDataURL("image/png");
+                //document.getElementById("sample").src = dataURL;
+                //cPush();
+
+                obj = canvas1.getActiveObject();
+                fontsize = obj.fontSize;
+                fonttext = obj.text;
+                alert(fontsize + "" + fonttext)
+                
+            });
+            $("#gcal").click(function () {
+                canvas1.clear();
+                fabric.Image.fromURL(preimageurl, function (img) {
+                   img.filters.push(new fabric.Image.filters.Grayscale());
+
+                    // apply filters and re-render canvas when done
+                    img.applyFilters(canvas1.renderAll.bind(canvas1));
+                    img.set('selectable', false);
+                    canvas1.sendToBack(img);
+                    canvas1.add(img);
+                 
+                });
+                //var addnewtext = new fabric.IText(fonttext, {
+
+                //    fontSize: fontsize,
+                //    fill: '#000',
+                //    fontFamily: 'Arial',
+                //    fontWeight: 'normal',
+                //    textAlign: 'left',
+                //    cornerColor: '#000',
+                //    left: (canvas.width) / 5,
+                //    top: (canvas.height) / 5
+                //});
+                //canvas1.add(addnewtext);
+                //addnewtext.set("selectable", true);
+              
+                //canvas1.renderAll();
+               
+            });
+        });
+        // Show Loader
+        function showloader() 
+        {
+            $("div#loading-image").addClass('show');
+            
+        }
+
+        // Hide Loader
+        function hideLoader() {
+            $("div#loading-image").removeClass('show');
+        }
+        function cPush() {
+            cStep++;
+            if (cStep < cPushArray.length) { cPushArray.length = cStep; }
+            cPushArray.push(document.getElementById('canvas').toDataURL("image/png"));
+            //document.getElementById("sample").src = dataURL;
+            //alert("filf");
+            document.title = cStep + ":" + cPushArray.length;
+        }
+        function cUndo() {
+
+            if (cStep > 0) {
+                cStep--;
+
+                //ctx.clearRect(0, 0, canvas.width, canvas.height);
+                var canvas = document.getElementById("canvas");
+                var ctx = canvas.getContext("2d");
+                img.src = cPushArray[cStep];
+                img.crossOrigin = "Anonymous";
+                document.getElementById("sample").src = cPushArray[cStep];
+
+                img.onload = function () {
+                    if (img.width >= canvaswidth) {
+                        canvas.width = canvaswidth;
+                        canvas.height = canvasheight;
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        ctx.save();
+                        dataURL = canvas.toDataURL("image/png");
+                        preimageurl = canvas.toDataURL("image/png");
+
+
+                    }
+                    else {
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        ctx.save();
+                        dataURL = canvas.toDataURL("image/png");
+                        preimageurl = canvas.toDataURL("image/png");
+                    }
+                }
+
+                //if (img.width >= canvaswidth) {
+                //    canvas.width = canvaswidth;
+                //    canvas.height = canvasheight;
+                //    img.onload = function () {
+
+                       
+                //        //ctx2.clearRect(0, 0, canvas.width, canvas.height);
+                //        ////ctx2.save();
+                //        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                //        //ctx.save();
+                //        //dataURL = canvas.toDataURL("image/png");
+                //        //preimageurl = canvas.toDataURL("image/png");
+
+                //    }
+                //}
+                //else {
+                //    canvas.width = img.width;
+                //    canvas.height = img.height;
+                //    img.onload = function () {
+                //        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                //        //ctx2.save();
+                //        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                //        //ctx.save();
+                //        //dataURL = canvas.toDataURL("image/png");
+                //        //preimageurl = canvas.toDataURL("image/png");
+                //    }
+
+                //}
+
+
+
+                document.title = cStep + ":" + cPushArray.length;
+            }
+        }
+        function cRedo() {
+            
+            if (cStep < cPushArray.length - 1) {
+                cStep++;
+                var canvas = document.getElementById("canvas");
+                var ctx = canvas.getContext("2d");
+                img.src = cPushArray[cStep];
+                document.getElementById("sample").src = cPushArray[cStep];
+                img.onload = function () {
+                    if(img.width>=canvaswidth)
+                    {
+                        canvas.width = canvaswidth;
+                        canvas.height = canvasheight;
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        ctx.save();
+                        dataURL = canvas.toDataURL("image/png");
+                        preimageurl = canvas.toDataURL("image/png");
+                    }
+                    else
+                    {
+                        
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        ctx.save();
+                        dataURL = canvas.toDataURL("image/png");
+                        preimageurl = canvas.toDataURL("image/png");
+                    }
+}
+                //if (img.width >= canvaswidth) {
+                //    canvas.width = canvaswidth;
+                //    canvas.height = canvasheight;
+                //    img.onload = function () {
+
+
+                //        //ctx2.clearRect(0, 0, canvas.width, canvas.height);
+                //        ////ctx2.save();
+                //        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                //        //ctx.save();
+                //        //dataURL = canvas.toDataURL("image/png");
+                //        //preimageurl = canvas.toDataURL("image/png");
+                //    }
+                //}
+                //else {
+                //    canvas.width = img.width;
+                //    canvas.height = img.height;
+                //    img.onload = function () {
+
+
+                //        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                //        //ctx2.save();
+                //        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                //        //ctx.save();
+                //        //dataURL = canvas.toDataURL("image/png");
+                //        //preimageurl = canvas.toDataURL("image/png");
+                //    }
+
+                //}
+
+                document.title = cStep + ":" + cPushArray.length;
+            }
+        }
+
+        function applyFilters() {
+          
+            prevchange();
+            
+            
+            //var hue = parseInt($('#hue').val());
+            
+            var saturate = parseInt($('#saturaterange').val());
+            var hue = parseInt($('#huerange').val());
+            var bright = parseInt($('#brightrange').val());
+            var sharpen = parseInt($('#sharpenrange').val());
+            var contrast = parseInt($('#contrastrange').val());
+            var noise = parseInt($('#blurrange').val());
+            var Exposure = parseInt($('#exposurerange').val());
+            var sepia = parseInt($('#sepiarange').val());
+            //var bright = parseInt($('#bright').val());
+            //var gray = parseInt($('#gray').val());
+            //alert(img.src);
+
+                Caman("#canvas", function () {
+                //this.CanvasRenderingContext2D;
+                this.reloadCanvasData();
+                showloader();
+                //this.revert(false);
+                //  this.hue(hue);
+                this.saturation(saturate);
+                this.hue(hue);
+                this.brightness(bright);
+                this.sharpen(sharpen);
+                this.contrast(contrast);
+                this.noise(noise);
+                this.exposure(Exposure);
+                this.sepia(sepia);
+                this.render(function () {
+                    hideLoader();
+
+                });
+                              });
+                
+        }
+       
+        function prevchange() {
+            var canvas = document.getElementById("canvas");
+            var ctx = canvas.getContext("2d");
+            img.src = preimageurl;
+            //img.crossOrigin = "Anonymous";
+            img.onload = function () {
+
+
+                if (img.width >= canvaswidth) {
+                    
+                    canvas.width = canvaswidth;
+                    canvas.height = canvasheight;
+                    document.getElementById("sample").src = preimageurl;
+                    //  img.onload = function () {
+
+                    // ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    //ctx2.save();
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    //}
+                    
+                }
+                else {
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    document.getElementById("sample").src = preimageurl;
+                    //img.onload = function () {
+
+                    // ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    //ctx2.save();
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    //}
+                    
+                }
+            }
+
+        }
+
+        function setheight(textvalue)
+        {
+            if (document.getElementById('ratio').checked) {
+                
+                var newheight = (parseInt(textvalue) * 2.65) / 4;
+                document.getElementById("txtresizeheight").value = parseInt(newheight);
+            }
+        }
+        function getsize()
+        {
+            if (document.getElementById('byper').checked) {
+                document.getElementById("txtresizewidth").value = 100;
+                document.getElementById("txtresizeheight").value = 100;
+            }
+            else
+            {
+                document.getElementById("txtresizewidth").value = canvas.width;
+                document.getElementById("txtresizeheight").value = canvas.height;
+            }
+        }
+    </script>
+    <style type="text/css">
+        .itext {
+    width: 300px;
+    background: transparent;
+    position: absolute;
+    z-index: 2;
+}
+        .messagepopbright {
+            background-color: #FFFFFF;
+            border: 1px solid #999999;
+            cursor: default;
+            display: none;
+            margin-top: 276px;
+            margin-left: 130px;
+            position: absolute;
+            text-align: left;
+            /*width: 394px;*/
+            z-index: 50;
+            padding: 25px 25px 20px;
+        }
+        .messagepopsharpen {
+            background-color: #FFFFFF;
+            border: 1px solid #999999;
+            cursor: default;
+            display: none;
+            margin-top: 276px;
+            margin-left: 130px;
+            position: absolute;
+            text-align: left;
+            /*width: 394px;*/
+            z-index: 50;
+            padding: 25px 25px 20px;
+        }
+        .messagepopcontrast {
+            background-color: #FFFFFF;
+            border: 1px solid #999999;
+            cursor: default;
+            display: none;
+            margin-top: 276px;
+            margin-left: 130px;
+            position: absolute;
+            text-align: left;
+            /*width: 394px;*/
+            z-index: 50;
+            padding: 25px 25px 20px;
+        }
+        .messagepopnoise {
+            background-color: #FFFFFF;
+            border: 1px solid #999999;
+            cursor: default;
+            display: none;
+            margin-top: 276px;
+            margin-left: 130px;
+            position: absolute;
+            text-align: left;
+            /*width: 394px;*/
+            z-index: 50;
+            padding: 25px 25px 20px;
+        }
+
+        .messagepopexposure {
+            background-color: #FFFFFF;
+            border: 1px solid #999999;
+            cursor: default;
+            display: none;
+            margin-top: 276px;
+            margin-left: 130px;
+            position: absolute;
+            text-align: left;
+            /*width: 394px;*/
+            z-index: 50;
+            padding: 25px 25px 20px;
+        }
+
+        .messagepopsepia {
+            background-color: #FFFFFF;
+            border: 1px solid #999999;
+            cursor: default;
+            display: none;
+            margin-top: 276px;
+            margin-left: 130px;
+            position: absolute;
+            text-align: left;
+            /*width: 394px;*/
+            z-index: 50;
+            padding: 25px 25px 20px;
+        }
+         #loading-image {
+        display: none;
+    }
+
+        #loading-image.show {
+            display: block;
+            position: fixed;
+            z-index: 100;
+            background-image: url('/images/ajax-loader.gif');
+            background-color: #666;
+            opacity: 0.4;
+            background-repeat: no-repeat;
+            background-position: center;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            top: 0;
+        }
+
+    #loadinggif.show {
+        left: 50%;
+        top: 50%;
+        position: absolute;
+        z-index: 101;
+        width: 32px;
+        height: 32px;
+        margin-left: -16px;
+        margin-top: -16px;
+    }
+    </style>
+
+</head>
+<body>
+    <div id="loading-image">
+    </div>
+    <div class="col-sm-6">
+        <button id="crop" type="button" class="btn btn-info btn-lg" data-toggle="modal" data-backdrop="static" data-target="#myModal">Crop</button><br /><br />
+        <a id="rotate" class="btn btn-info btn-lg">Rotated</a>
+        <button id="resize" class="btn btn-info btn-lg">Resize</button><br /><br />
+        <button id="save" class="btn btn-info btn-lg">Save</button><br /><br />
+        <button id="saturate" class="btn btn-info btn-lg">Saturation</button>
+        <button id="hue" class="btn btn-info btn-lg">Hue</button>
+        <button id="bright" class="btn btn-info btn-lg">Brightness</button>
+        <button id="sharpen" class="btn btn-info btn-lg">Sharpen</button>
+        <button id="contrast" class="btn btn-info btn-lg">contrast</button>
+        <button id="noise" class="btn btn-info btn-lg">Noise</button>
+        <button id="exposure" class="btn btn-info btn-lg">Exposure</button>
+        <button id="sepia" class="btn btn-info btn-lg">Sepia</button>
+        <button id="addtext" class="btn btn-info btn-lg">Addtext</button>
+        @*<button id="rsatu" class="btn btn-info btn-lg">RemoveSaturation</button>*@
+        <button onclick="javascript:cUndo();return false;" class="btn btn-info btn-sm">Undo</button>
+        <button onclick="javascript:cRedo();return false;" class="btn btn-info btn-sm">Redo</button>
+        <div class="messagepop1 pop1">
+            <p><label for="email">Width</label><input type="text" id="txtw" onchange="javascript:txtwidthchange();return false;" value="200" /></p>
+            <p> <label for="body">Height</label> <input type="text" id="txth" value="200" /></p>
+            <p><button id="fcrop" class="btn btn-info btn-sm">Apply</button> <button id="Cancle" class="cancle btn btn-info btn-sm">Cancle</button></p>
+        </div>
+        @* for Rotate*@
+        <div class="messagepop pop">
+            @*<p><label for="email">Width</label><input type="text" id="txtw" value="200" /></p>
+                <p> <label for="body">Height</label> <input type="text" id="txth" value="200" /></p>*@
+            <p><button id="clockwise" class="btn btn-info btn-sm">Rotate right</button><br /><br /></p>
+            <p><button id="counterclockwise" class="btn btn-info btn-sm">Rotate left</button><br /><br /></p>
+            <p> <button id="saverotet" class="btn btn-info btn-sm">Save</button>  <button id="Cancle" class="close btn btn-info btn-sm">Cancle</button></p>
+        </div>
+
+        @*Save Popup *@
+        <div class="messagepopdow pop2">
+            <p><label for="filename">File Name</label><input type="text" id="fname" value="" /></p>
+            <p><input type="radio" name="ftype" value="png" checked />Png &nbsp;&nbsp;&nbsp;&nbsp; <input type="radio" name="ftype" value="jpg" />Jpg</p>
+            <p> <a href="#" class="btn btn-info btn-sm" id="btn-download" download="my-file-name.png">Download</a>  <button id="Cancle" class="cancledow">Cancle</button></p>
+        </div>
+        @*Resize Popup *@
+        <div class="messagepopresize popresize">
+            <p><label>Width</label><input type="text" id="txtresizewidth" value="" onkeyUp="setheight(this.value);" /></p>
+            <p> <label>Height</label> <input type="text" id="txtresizeheight" value="" /></p>
+            <p><input type="checkbox" name="bypercentage" id="byper" onclick="getsize();"/>By Percentage </p>
+            <p><input type="checkbox" name="ratio" id="ratio" checked/>Keep Proportions </p>
+            <p><button id="Fresize" class="btn btn-info btn-sm">Apply</button> <button id="Cancle" class="rcancle btn btn-info btn-sm">Cancle</button></p>
+        </div>
+        @*Saturation Popup *@
+        <div class="messagepopsaturate popsaturate">
+            <p>saturation</p>
+            <input type=range id=saturaterange min=-100 max=100 value=1 step="1">
+            <p><button id="Fsaturate" class="btn btn-info btn-sm">Apply</button> <button id="Cancle" class="csaturate btn btn-info btn-sm">Cancle</button></p>
+        </div>
+        @*Hue Popup *@
+        <div class="messagepophue pophue">
+            <p>Hue</p>
+            <input type=range id=huerange min=0 max=300 value="0" step="1">
+            <p><button id="Fhue" class="btn btn-info btn-sm">Apply</button> <button id="Cancle" class="chue btn btn-info btn-sm">Cancle</button></p>
+        </div>
+        @*Brighness Popup *@
+        <div class="messagepopbright popbright">
+            <p>Brightness</p>
+            <input type=range id=brightrange min=-100 max=100 value=1 step="1">
+            <p><button id="Fbright" class="btn btn-info btn-sm">Apply</button> <button id="Cancle" class="cbright btn btn-info btn-sm">Cancle</button></p>
+        </div>
+        <div class="messagepopsharpen popsharpen">
+            <p>Sharpen</p>
+            <input type=range id=sharpenrange min=0 max=100 value=0 step="1">
+            <p><button id="Fsharpen" class="btn btn-info btn-sm">Apply</button> <button id="Cancle" class="csharpen btn btn-info btn-sm">Cancle</button></p>
+        </div>
+        @*Contrast Popup *@
+        <div class="messagepopcontrast popcontrast">
+            <p>Contrast</p>
+            <input type=range id=contrastrange min=-100 max=100 value=0 step="1">
+            <p><button id="Fcontrast" class="btn btn-info btn-sm">Apply</button> <button id="Cancle" class="ccontrast btn btn-info btn-sm">Cancle</button></p>
+        </div>
+        @*Noise Popup *@
+        <div class="messagepopnoise popnoise">
+            <p>Noise</p>
+            <input type=range id=noiserange min=0 max=100 value=0 step="1">
+            <p><button id="Fnoise" class="btn btn-info btn-sm">Apply</button> <button id="Cancle" class="cnoise btn btn-info btn-sm">Cancle</button></p>
+        </div>
+        @*Exposure Popup *@
+        <div class="messagepopexposure popexposure">
+            <p>Exposure</p>
+            <input type=range id=exposurerange min=-100 max=100 value=0 step="1">
+            <p><button id="Fexposure" class="btn btn-info btn-sm">Apply</button> <button id="Cancle" class="cexposure btn btn-info btn-sm">Cancle</button></p>
+        </div>
+        @*Sepia Popup *@
+        <div class="messagepopsepia popsepia">
+            <p>Sepia</p>
+            <input type=range id=sepiarange min=0 max=100 value=0 step="1">
+            <p><button id="Fsepia" class="btn btn-info btn-sm">Apply</button> <button id="Cancle" class="csepia btn btn-info btn-sm">Cancle</button></p>
+        </div>
+        
+
+    </div>
+
+    
+    <div class="container col-sm-6">
+        <span class="btn btn-success fileinput-button">
+            <i class="glyphicon glyphicon-plus"></i>
+            <span>Add files...</span>
+            <input id="fileUpload" type="file" name="img" multiple>
+        </span>
+        <br />
+        @*<div class="progress">
+            <div class="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%;">
+                <span class="sr-only">0% complete</span>
+            </div>
+        </div>*@
+        <div class="progress" style="display:none" >
+                <div class="progress-bar progress-bar-success" role="progressbar" aria-valuenow="40"
+                     aria-valuemin="0" aria-valuemax="100" style="width:0%">
+                    <span id="pvalue"> </span>
+                 </div>
+            </div>
+        <br/>
+        <label id="msg" style="display:none"></label>
+            <canvas id="canvas" width="600" height="600"></canvas>
+            <label id="lblzoom"></label><input type="range" min="77" max="1598" step="1" id="zoom" value="1" />
+            <input type="hidden" id="hdX" />
+            <input type="hidden" id="hdY" />
+            <input type="hidden" id="hdW" />
+            <input type="hidden" id="hdH" />
+            <img id="sample" />
+        </div>
+    <div id="txtformate" style="display:none">
+        <input type="button" value="bold" id="fbold"/>
+        <input type="text" id="fstyle"/>
+    </div>
+    <input type="button" id="save2" value="save2"/>
+    <input type="button" id="gcal" value="grayscal"/>
+    </body>
+    </html>
+
+
+

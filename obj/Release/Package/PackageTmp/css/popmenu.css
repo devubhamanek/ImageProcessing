@@ -1,0 +1,145 @@
+﻿body {
+}
+        a.selected {
+            background-color: #1F75CC;
+            color: white;
+            z-index: 100;
+        }
+
+        .messagepop {
+            background-color: #FFFFFF;
+            border: 1px solid #999999;
+            cursor: default;
+            display: none;
+            margin-top: -151px;
+            margin-left: 100px;
+            position: absolute;
+            text-align: left;
+            /*width: 394px;*/
+            z-index: 50;
+            padding: 25px 25px 20px;
+        }
+
+        .messagepop1 {
+            background-color: #FFFFFF;
+            border: 1px solid #999999;
+            cursor: default;
+            display: none;
+            margin-top: -392px;
+            margin-left: 100px;
+            position: absolute;
+            text-align: left;
+            /*width: 394px;*/
+            z-index: 50;
+            padding: 25px 25px 20px;
+        }
+
+        .messagepopdow {
+            background-color: #FFFFFF;
+            border: 1px solid #999999;
+            cursor: default;
+            display: none;
+            margin-top: 81px;
+            margin-left: 100px;
+            position: absolute;
+            text-align: left;
+            /*width: 394px;*/
+            z-index: 50;
+            padding: 25px 25px 20px;
+        }
+
+        .messagepopresize {
+            background-color: #FFFFFF;
+            border: 1px solid #999999;
+            cursor: default;
+            display: none;
+            margin-top: 81px;
+            margin-left: 100px;
+            position: absolute;
+            text-align: left;
+            /*width: 394px;*/
+            z-index: 50;
+            padding: 25px 25px 20px;
+        }
+
+        .messagepopsharpen {
+            background-color: #FFFFFF;
+            border: 1px solid #999999;
+            cursor: default;
+            display: none;
+            margin-top: 81px;
+            margin-left: 100px;
+            position: absolute;
+            text-align: left;
+            /*width: 394px;*/
+            z-index: 50;
+            padding: 25px 25px 20px;
+        }
+
+        .messagepopsaturate {
+            background-color: #FFFFFF;
+            border: 1px solid #999999;
+            cursor: default;
+            display: none;
+            margin-top: 276px;
+            margin-left: 130px;
+            position: absolute;
+            text-align: left;
+            /*width: 394px;*/
+            z-index: 50;
+            padding: 25px 25px 20px;
+        }
+        .messagepophue {
+            background-color: #FFFFFF;
+            border: 1px solid #999999;
+            cursor: default;
+            display: none;
+            margin-top: 276px;
+            margin-left: 130px;
+            position: absolute;
+            text-align: left;
+            /*width: 394px;*/
+            z-index: 50;
+            padding: 25px 25px 20px;
+        }
+        .messagepopbright {
+            background-color: #FFFFFF;
+            border: 1px solid #999999;
+            cursor: default;
+            display: none;
+            margin-top: 276px;
+            margin-left: 130px;
+            position: absolute;
+            text-align: left;
+            /*width: 394px;*/
+            z-index: 50;
+            padding: 25px 25px 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 3px;
+            padding-left: 15px;
+            text-indent: -15px;
+        }
+
+        .messagepop p, .messagepop.div {
+            border-bottom: 1px solid #EFEFEF;
+            margin: 8px 0;
+            padding-bottom: 8px;
+        }
+
+        .input[type='range'] {
+            -webkit-appearance: slider-vertical;
+            background-color: #ccc;
+            height: 158px;
+            width: 2px;
+            margin: 8px auto;
+        }
+
+        input[type='range']::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            border-radius: 20px;
+            background-color: #3ebede;
+            height: 30px;
+            width: 30px;
+        }

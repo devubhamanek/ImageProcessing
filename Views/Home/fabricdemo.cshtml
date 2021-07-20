@@ -1,0 +1,1817 @@
+﻿@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+
+<html>
+<head>
+    <meta name="viewport" content="width=device-width" />
+    <title>resize</title>
+    <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/camanjs/4.1.2/caman.full.min.js"></script>
+    <script src="http://cdnjs.cloudflare.com/ajax/libs/fabric.js/1.5.0/fabric.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>   
+    <script src="http://jcrop-cdn.tapmodo.com/v0.9.12/js/jquery.Jcrop.min.js"></script>
+    <script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+    <script type="text/javascript">
+        var imgurl;
+        var fonttext;
+        var fontfamily;
+        var prevchange;
+        var currentwidth;
+        var currentheight;
+        var oldwidth;
+        var oldheight;
+        var oimgwidth;
+        var oimgheight;
+        var ctx;
+        var canvasScale = 1;
+        var SCALE_FACTOR = 1.01;
+        var angleoffset = 90;
+        var fontweight;
+        var textdecoration;
+        var fontbold=0;
+        var fonitalic = 0;
+        var flag = 0;
+       // var cPushArray = new Array();
+      //  var cStep = -1;
+        $(document).ready(function () {
+            var state = [];
+            var mods = 0;
+            var undocount = 0;
+            var redocount = 0;
+            canvas = new fabric.Canvas('design-canvas');
+            canvas.counter = 0;
+            var newleft = 0;
+            canvas.selection = false;
+            var drawingModeEl = document.getElementById('freedraw'),
+                drawingOptionsEl = document.getElementById('drawing-mode-options'),
+                drawingColorEl = document.getElementById('drawing-color'),
+                drawingLineWidthEl = document.getElementById('drawing-line-width'),
+                drawingShadowWidth = document.getElementById('drawing-shadow-width');
+                drawingModeEl.onclick = function () {
+                if ($(this).hasClass('selected')) {
+                    deselectfreedraw($(this));
+                } else {
+                    $(this).addClass('selected');
+                    $('.popfreedraw').slideFadeToggle();
+                }
+                canvas.isDrawingMode = true;
+            };
+            jQuery('#add-text-btn').click(function () {
+                var message = $('textarea#add-text-value').val();
+                var e = document.getElementById("ffselect");
+                var strUser = e.options[e.selectedIndex].value;
+                new_text = new fabric.IText(message, { left: canvas.width / 2, top: canvas.height / 2, width: 200, textAlign: 'right', fontFamily: strUser, fontSize: 20, fontWeight: "bold", stroke: '#DD0000'});
+                canvas.setActiveObject(new_text);
+                canvas.add(new_text);
+                prevchange = JSON.stringify(canvas.toJSON(['width', 'height']));
+                updateModifications(true);
+                canvas.counter++;
+                newleft += 100;
+            });
+            // image manage
+            var imageLoader = document.getElementById('imageLoader');
+            imageLoader.addEventListener('change', handleImage, false);
+            function handleImage(e) {
+                canvas.clear();
+                var reader = new FileReader();
+                reader.onload = function (event) {
+                    var img = new Image();
+                    img.onload = function () {
+                        var imgInstance = new fabric.Image(img, {
+                            hasControls: false,
+                            hasBorders: false,
+                            lockMovementX: true,
+                            lockMovementY: true,
+                            centeredScaling: true,
+                            originX: 'center',
+                            originY: 'center',
+                        }).setCoords();
+                    oimgwidth = imgInstance.getWidth();
+                    oimgheight = imgInstance.getHeight();
+                  
+                    if (oimgwidth > canvas.getWidth()) {
+                            imgInstance.width = canvas.getWidth();
+                            imgInstance.height = canvas.getHeight();
+                     }
+                     else
+                     {
+                            canvas.setWidth(oimgwidth);
+                            canvas.setHeight(oimgheight);
+                     }
+                    canvas.add(imgInstance);
+                    canvas.centerObject(imgInstance);
+                    canvas.sendToBack(imgInstance);
+                    canvas.setActiveObject(imgInstance);
+                    canvas.item(0).hasControls = canvas.item(0).hasBorders = false;
+                    updateModifications(true);
+                    canvas.counter++;
+                    newleft += 100;
+                    prevchange = JSON.stringify(canvas.toJSON(['width', 'height']));
+                    }
+                    img.src = event.target.result;
+                    imgurl = event.target.result;
+                }
+                reader.readAsDataURL(e.target.files[0]);
+                
+            }
+            $("#brightness").click(function (e) {
+                if ($(this).hasClass('selected')) {
+                    deselectbright($(this));
+                } else {
+                    $(this).addClass('selected');
+                    $('.popbright').slideFadeToggle();
+                }
+                //var cimg = canvas.getActiveObject();
+
+                //cimg && "image" === cimg.type && (       
+                //cimg.filters.push(new fabric.Image.filters.Brightness({ brightness: parseInt(40) })),
+                //cimg.applyFilters(canvas.renderAll.bind(canvas)));
+               
+                //updateModifications(true);
+                //canvas.counter++;
+                //newleft += 100;
+                
+            });
+            //Save Bright Effect
+            $("#Fbright").click(function () {
+                updateModifications(true);
+                canvas.counter++;
+                newleft += 100;
+                prevchange = JSON.stringify(canvas.toJSON(['width', 'height']));
+                document.getElementById("brightrange").value = 0;
+                deselectbright($('#brightness'));
+                return false;
+            });
+            //Cancel Sepia Effec
+            $('.cbright').on("click", function () {
+
+                prevchanges();
+                document.getElementById("brightrange").value = 0;
+                deselectbright($('#brightness'));
+                //return false;
+            });
+            //Close bright Popup
+            function deselectbright(e) {
+
+                $('.popbright').slideFadeToggle(function () {
+                    e.removeClass('selected');
+                });
+            }
+            var brightevent = document.getElementById('brightrange');
+            brightevent.addEventListener('change', function (e) {
+                //debugger;
+                prevchanges();
+                var bright = parseInt(this.value);
+               setTimeout(function () {
+                    var cimg = canvas.getActiveObject();
+                    if (cimg.type === "image") {
+                      cimg.filters.push(new fabric.Image.filters.Brightness({ brightness: parseInt(bright) })),
+                    cimg.applyFilters(canvas.renderAll.bind(canvas));
+
+                    }
+                    //cimg && "image" === cimg.type && (
+                    //cimg.filters.push(new fabric.Image.filters.Grayscale({ brightness: parseInt(sepia) })),
+                    //cimg.applyFilters(canvas.renderAll.bind(canvas)));
+
+                }, 100)
+            });
+            $("#gcolor").click(function (e) {
+                if ($(this).hasClass('selected')) {
+                    deselectsepia($(this));
+                } else {
+                    $(this).addClass('selected');
+                    $('.popsepia').slideFadeToggle();
+                }
+                
+                //debugger;
+                //updateModifications(true);
+                //canvas.counter++;
+                //newleft += 100;
+
+            });
+            var sepiaevent = document.getElementById('sepiarange');
+            sepiaevent.addEventListener('change', function (e) {
+                //debugger;
+                prevchanges();
+                //console.log("hii");
+                var sepia = parseInt(this.value);
+                //alert(sepia)
+                
+              setTimeout(function () {
+                var cimg = canvas.getActiveObject();
+                if (cimg.type === "image")
+                {
+                  
+                    cimg.filters.push(new fabric.Image.filters.Noise({ noise: parseInt(sepia) })),
+                cimg.applyFilters(canvas.renderAll.bind(canvas));
+
+                }
+                //cimg && "image" === cimg.type && (
+                //cimg.filters.push(new fabric.Image.filters.Grayscale({ brightness: parseInt(sepia) })),
+                //cimg.applyFilters(canvas.renderAll.bind(canvas)));
+                
+               },100)
+            });
+
+            //Save Sepia Effect
+            $("#Fsepia").click(function () {
+                updateModifications(true);
+                canvas.counter++;
+                newleft += 100;
+
+                prevchange = JSON.stringify(canvas.toJSON(['width', 'height']));
+                document.getElementById("sepiarange").value = 0;
+                deselectsepia($('#sepia'));
+                return false;
+            });
+
+            //Cancel Sepia Effec
+            $('.csepia').on("click", function () {
+                
+                prevchanges();
+                document.getElementById("sepiarange").value = 0;
+                deselectsepia($('#sepia'));
+                //return false;
+            });
+
+            //Close Sepia Popup
+            function deselectsepia(e) {
+
+                $('.popsepia').slideFadeToggle(function () {
+                    e.removeClass('selected');
+                });
+            }
+
+            $("#pixelate").click(function (e) {
+                if ($(this).hasClass('selected')) {
+                    deselectpixelate($(this));
+                } else {
+                    $(this).addClass('selected');
+                    $('.poppixelate').slideFadeToggle();
+                }
+            });
+            var pixelateevent = document.getElementById('pixelaterange');
+            pixelateevent.addEventListener('change', function (e) {
+                //var cimg = canvas.getActiveObject();
+                prevchanges();
+
+                var pixelate = parseInt(this.value);
+
+                
+                setTimeout(function () {
+
+                    var cimg = canvas.getActiveObject();
+                    if (cimg.type === "image") {
+
+                        cimg.filters.push(new fabric.Image.filters.Pixelate({ blocksize: parseInt(pixelate) }));
+                        cimg.applyFilters(canvas.renderAll.bind(canvas));
+
+                    }
+
+
+                }, 100)
+            });
+
+            //Save Pixelate Effect
+            $("#Fpixelate").click(function () {
+                updateModifications(true);
+                canvas.counter++;
+                newleft += 100;
+                prevchange = JSON.stringify(canvas.toJSON(['width', 'height']));
+                document.getElementById("pixelaterange").value = 4;
+                deselectpixelate($('#pixelate'));
+                return false;
+            });
+
+            //Cancel Pixelate Effec
+            $('.cpixelate').on("click", function () {
+
+                prevchanges();
+                document.getElementById("pixelaterange").value = 4;
+                deselectpixelate($('#pixelate'));
+                //return false;
+            });
+
+            //Close Pixelate Popup
+            function deselectpixelate(e) {
+
+                $('.poppixelate').slideFadeToggle(function () {
+                    e.removeClass('selected');
+                });
+            }
+            $("#gtransparency").click(function (e) {
+                if ($(this).hasClass('selected')) {
+                    deselectgtransparency($(this));
+                } else {
+                    $(this).addClass('selected');
+                    $('.popgtransparency').slideFadeToggle();
+                }
+            });
+            var gtransparencyevent = document.getElementById('gtransparencyrange');
+            gtransparencyevent.addEventListener('change', function (e) {
+                //var cimg = canvas.getActiveObject();
+                prevchanges();
+
+                var gtransparency = parseFloat(this.value)/100;
+
+                //alert(gtransparency);
+               setTimeout(function () {
+                
+                    var cimg = canvas.getActiveObject();
+                    if (cimg.type === "image") {
+                        
+                        cimg.filters.push(new fabric.Image.filters.Tint({opacity:parseFloat(gtransparency) }));
+                    cimg.applyFilters(canvas.renderAll.bind(canvas));
+
+                    }
+        
+                }, 50)
+            });
+            function traneffect() {
+
+      }; 
+            //Save Sepia Effect
+            $("#Fgtransparency").click(function () {
+                updateModifications(true);
+                canvas.counter++;
+                newleft += 100;
+                prevchange = JSON.stringify(canvas.toJSON(['width', 'height']));
+                deselectgtransparency($('#gtransparency'));
+                return false;
+            });
+
+            //Cancel Sepia Effec
+            $('.cgtransparency').on("click", function () {
+
+                prevchanges();
+                deselectgtransparency($('#gtransparency'));
+                //return false;
+            });
+            //Close Sepia Popup
+            function deselectgtransparency(e) {
+
+                $('.popgtransparency').slideFadeToggle(function () {
+                    e.removeClass('selected');
+                });
+            }
+            $.fn.slideFadeToggle = function (easing, callback) {
+                return this.animate({ opacity: 'toggle', height: 'toggle' }, 'fast', easing, callback);
+            };
+            $("#save").click(function () {
+                if ($(this).hasClass('selected')) {
+                    deselectdow($(this));
+                } else {
+                    $(this).addClass('selected');
+                    $('.pop2').slideFadeToggle();
+                }
+            });
+            var buttondow = document.getElementById('btn-download');
+            buttondow.addEventListener('click', saveImage, false);
+
+            function saveImage(e) {
+                var radioValue = $("input[name='ftype']:checked").val();
+                var fname = document.getElementById("fname").value;
+                this.href = canvas.toDataURL({
+                    format:radioValue,
+                    quality: 0.8
+                });
+                this.download = fname + "." + radioValue;
+                deselectdow($("#save"));
+            }
+
+            //Close Download Popup
+            function deselectdow(e) {
+
+                $('.pop2').slideFadeToggle(function () {
+                    e.removeClass('selected');
+                });
+            }
+            //Cancle Dowload 
+            $('.cancledow').on("click", function () {
+                deselectdow($('#save'));
+
+                return false;
+            });
+            function prevchanges()
+            {
+                
+             //   canvas.loadFromJSON(prevchange, function () {
+             //       var objects = canvas.getObjects();
+             //       // Trying to set the property after load JSON
+             //       //alert('Objects: ' + objects);
+             //       objects.forEach(function (o) {
+             //           if (o.type === "image") {
+             //               o.scaleToWidth(canvas.width);
+                //               o.scaleToHeight(canvas.height);
+                //               o.hasControls= false;
+             //               o.hasBorders=false;
+             //               o.lockScalingX = o.lockScalingY = true;
+             //               o.lockMovementX = o.lockMovementY = true;
+             //               canvas.setActiveObject(o);
+
+             //           }
+                       
+             //       });
+                    
+                    
+             //   });
+                
+                
+             ////  setTimeout(function () {
+             //      canvas.renderAll();
+             //      canvas.calcOffset();
+                //  // },6);
+                canvas.clear();
+                //canvas.loadFromJSON(state[state.length - 1 - mods - 1]);
+                var object = JSON.parse(prevchange);
+                var cwidth = object.width;
+                var cheight = object.height;
+                //console.log(canvas.loadFromJSON(state[state.length - 1 - mods - 1]));
+                canvas.loadFromJSON(prevchange, function () {
+                    canvas.setWidth(cwidth);
+                    canvas.setHeight(cheight);
+                    if (canvas.getObjects().length > 0) {
+                        var i;
+                        for (i = 0; i < canvas.getObjects().length; i++) {
+                            if (canvas.getObjects()[i].type === "image") {
+                                //alert("hello"+canvas.width)
+                                //alert(canvas.getObjects()[i].getWidth());
+
+                                canvas.getObjects()[i].hasControls = false;
+                                canvas.getObjects()[i].hasBorders = false;
+                                canvas.getObjects()[i].lockMovementX = true;
+                                canvas.getObjects()[i].lockMovementY = true;
+                                canvas.setActiveObject(canvas.getObjects()[i]);
+                                
+                            }
+                        }
+                        setTimeout(function () {
+                            canvas.renderAll();
+                        }, 7);
+                      
+                    }
+                });
+            }
+            $("#rect").click(function () {
+               //// alert("hiii");
+
+                var rect = new fabric.Rect({
+                    left: 10,
+                    top: 20,
+                    originX: 'left',
+                    originY: 'top',
+                    width: canvas.width/2,
+                    height: canvas.height/2,
+                    angle: 0,
+                    fill: 'rgba(255,0,0,0.5)',
+                    transparentCorners: false
+                });
+                canvas.add(rect);
+                canvas.renderAll.bind(canvas);
+                
+            });
+
+            var button = document.getElementById('btnrotate');
+            
+            button.onclick = function () {
+                //fabric.Object.prototype.originX = fabric.Object.prototype.originY = 'center'
+                var tempwidth = canvas.getWidth();
+                var tempheight = canvas.getHeight();
+                canvas.setWidth(tempheight);
+                canvas.setHeight(tempwidth);
+                canvas.calcOffset()
+                canvas.getObjects().forEach(function (obj) {
+                    if (obj.type === "image") {
+                        canvas.centerObject(obj);
+                        obj.originX = "center";
+                        obj.originy = "center";
+                        var curr = obj.getAngle()+angleoffset;
+                        obj.setAngle(curr).setCoords();
+                        
+                        canvas.renderAll();
+                    }
+                    else
+                    {
+                        var curr = obj.getAngle();
+                        obj.setAngle(curr + 90)
+                    }
+                    canvas.renderAll();
+                    
+                    //console.log(new_loc, rads);
+                });
+                prevchange = JSON.stringify(canvas.toJSON(['width', 'height']));
+
+                updateModifications(true);
+                canvas.counter++;
+                newleft += 100;
+            }
+            function updateModifications(savehistory) {
+               // debugger;
+                if (savehistory === true) {
+                    myjson = JSON.stringify(canvas.toJSON(['width', 'height']));
+                    //console.log(myjson);
+                    //alert(myjson);
+                    state.push(myjson);
+                    //alert(state.length);
+                    undocount += 1;
+                    
+                    if (undocount <= 1) {
+                        $('#undo').prop('disabled', true);
+                       // alert("hello");
+                    }
+                    else {
+                        
+                        $('#undo').prop('disabled', false);
+                    }
+                }
+            }
+
+            undo = function undo() {
+              
+                if (mods < state.length) {
+                    canvas.clear();
+                    //canvas.loadFromJSON(state[state.length - 1 - mods - 1]);
+                    
+                    var object = JSON.parse(state[state.length - 1 - mods - 1]);
+                    var cwidth = object.width;
+                    var cheight = object.height;
+                    //console.log(canvas.loadFromJSON(state[state.length - 1 - mods - 1]));
+                    canvas.loadFromJSON(state[state.length - 1 - mods - 1], function () {
+                        canvas.setWidth(cwidth);
+                        canvas.setHeight(cheight);
+                        if (canvas.getObjects().length > 0) {
+                            var i;
+                            for (i = 0; i < canvas.getObjects().length; i++) {
+                                if (canvas.getObjects()[i].type === "image") {
+                                    canvas.getObjects()[i].hasControls = false;
+                                    canvas.getObjects()[i].hasBorders = false;
+                                    canvas.getObjects()[i].lockMovementX = true;
+                                    canvas.getObjects()[i].lockMovementY = true;
+                                }
+                            }
+                            setTimeout(function () {
+                                canvas.renderAll();
+                                prevchange = JSON.stringify(canvas.toJSON(['width', 'height']));
+                            }, 7);
+                        }
+                    });
+                   
+                    mods += 1;
+                    $('#redo').prop('disabled', false);
+                    undocount -= 1;
+                   // alert(undocount);
+                    if(undocount<=1)
+                    {
+                       // alert("hiii");
+                        $('#undo').prop('disabled', true);
+                    }
+                    else {
+                       // alert("hiii111");
+                        $('#undo').prop('disabled', false);
+                    }
+
+                }
+               
+            }
+            redo = function redo() {
+                //debugger;
+                if (mods > 0) {
+
+                    canvas.clear();
+                    //canvas.loadFromJSON(state[state.length - 1 - mods - 1]);
+                    var object = JSON.parse(state[state.length - 1 - mods + 1]);
+                    
+                    var cwidth = object.width;
+                    var cheight = object.height;
+                   // alert(state[state.length - 1 - mods + 1]);
+                    canvas.loadFromJSON(state[state.length - 1 - mods + 1], function () {
+                        canvas.setWidth(cwidth);
+                        canvas.setHeight(cheight);
+                        if (canvas.getObjects().length > 0) {
+                            var i;
+                            for (i = 0; i < canvas.getObjects().length; i++) {
+                                if (canvas.getObjects()[i].type === "image") {
+                                    canvas.getObjects()[i].hasControls = false;
+                                    canvas.getObjects()[i].hasBorders = false;
+                                    canvas.getObjects()[i].lockMovementX = true;
+                                    canvas.getObjects()[i].lockMovementY = true;
+                                }
+                            }
+                            canvas.renderAll();
+                        }
+                    });
+
+
+
+                   // canvas.clear().renderAll();
+                //    canvas.loadFromJSON(state[state.length - 1 - mods + 1]);
+                 
+                   // console.log(canvas.loadFromJSON(state[state.length - 1 - mods + 1]));
+                    //if (canvas.getObjects().length > 0) {
+                    //    var i;
+                    //    for (i = 0; i < canvas.getObjects().length; i++) {
+
+                    //        if(canvas.getObjects()[i].type==="image")
+                    //        {
+                    //           // alert("hello"+canvas.getObjects()[i].getWidth());
+                    //            canvas.setWidth(canvas.width);
+                    //            canvas.setHeight(canvas.height);
+                    //            canvas.getObjects()[i].hasControls = false;
+                    //            canvas.getObjects()[i].hasBorders = false;
+                    //            canvas.getObjects()[i].lockMovementX = true;
+                    //            canvas.getObjects()[i].lockMovementY = true;
+                    //        }
+                    //    }
+                    //}
+                
+                //    });
+
+
+                    //alert("Fdfdsf");
+                    //var objects = canvas.getObjects();
+                    //alert(objects);
+                    //objects.forEach(function (obj) {
+                    //    alert(obj.width +""+ obj.height)
+                    //        canvas.setWidth(obj.scaleX);
+                    //        canvas.setHeight(obj.scaleY);
+                    //});
+                    //canvas.setWidth(currentwidth);
+                    //canvas.setHeight(currentheight);
+                   setTimeout(function () {
+                        canvas.renderAll();
+                        prevchange = JSON.stringify(canvas.toJSON(['width', 'height']));
+                   }, 10);
+                    
+                    mods -= 1;
+                    undocount += 1;
+                    $('#undo').prop('disabled', false);
+                    if(mods==0)
+                    {
+                        
+                        $('#redo').prop('disabled', true);
+                    }
+                }
+            }
+
+            clearcan = function clearcan() {
+                canvas.clear().renderAll();
+                newleft = 0;
+            }
+            $("#resize").click(function () {
+                if ($(this).hasClass('selected')) {
+                    deselectresize($(this));
+                } else {
+                    $(this).addClass('selected');
+                    $('.popresize').slideFadeToggle();
+                }
+                document.getElementById("txtwidth").value = canvas.getWidth();
+                document.getElementById("txtheight").value = canvas.getHeight();
+
+            });
+            $("#Fresize").click(function () {
+                oldwidth = canvas.getWidth();
+                oldheight = canvas.getHeight();
+                //alert("oldwidth" + oldwidth + "OldHeight" + oldheight);
+                var txtheight = document.getElementById('txtheight').value;
+                var txtwidth = document.getElementById('txtwidth').value;
+
+                var widthscal = txtwidth / canvas.getWidth();
+                var heigthscal =txtheight / canvas.getHeight() ;
+                
+                canvas.setHeight(txtheight);
+                canvas.setWidth(txtwidth);
+                //currentwidth = canvas.getWidth();
+                //currentheight = canvas.getHeight();
+                canvas.calcOffset();
+                canvas.getObjects().forEach(function (obj) {
+                    //obj.set('width',obj.width + widthscal);
+                    //obj.set('height', obj.height + heigthscal);
+                    // debugger;
+                   
+                 
+                    if (obj.type === "image") {
+                        var scaleX = obj.scaleX;
+                        var scaleY = obj.scaleY;
+                        var left = obj.left;
+                        var top = obj.top;
+                        //obj.scale(parseFloat(widthscal), parseFloat(heigthscal)).setCoords();
+                        obj.scaleX = scaleX * widthscal;
+                        obj.scaleY = scaleY * heigthscal;
+                        obj.top = top * heigthscal;
+                        obj.left = left * widthscal;
+                       
+                        obj.setCoords();
+                       // alert("scalx:" + obj.scaleX + "" + "scalx:" + obj.scaleY + "left:" + obj.left + "top:" + obj.top)
+                        //obj.scaleToHeight(canvas.getHeight());
+                        //obj.scaleToWidth(canvas.getWidth());
+                        // obj.scaleToWidth();
+
+                        obj.hasControls = false;
+                        obj.hasBorders = false;
+                        obj.lockScalingX = obj.lockScalingY = true;
+                        obj.lockMovementX = obj.lockMovementY = true;
+                        canvas.setActiveObject(obj);
+                    }
+                    else {
+                        var scaleX = obj.scaleX;
+                        var scaleY = obj.scaleY;
+                        var left = obj.left;
+                        var top = obj.top;
+
+                        obj.scaleX = scaleX * widthscal;
+                        obj.scaleY = scaleY * heigthscal;
+                        obj.top = top * heigthscal;
+                        obj.left = left * widthscal;
+                        obj.setCoords();
+                    }
+
+                });
+                
+                 canvas.renderAll();
+                //var objects = canvas.getObjects();
+                //for (var i in objects) {
+                //    var scaleX = objects[i].scaleX;
+                //    var scaleY = objects[i].scaleY;
+                //    var left = objects[i].left;
+                //    var top = objects[i].top;
+
+                //    var tempScaleX = scaleX * widthscal;
+                //    var tempScaleY = scaleY * heigthscal;
+                //    var tempLeft = left * widthscal;
+                //    var tempTop = top * heigthscal;
+
+                //    objects[i].scaleX = tempScaleX;
+                //    objects[i].scaleY = tempScaleY;
+                //    objects[i].left = tempLeft;
+                //    objects[i].top = tempTop;
+
+                //    objects[i].setCoords();
+                //}
+
+
+                //canvas.renderAll();
+
+                prevchange = JSON.stringify(canvas.toJSON(['width', 'height']));
+                updateModifications(true);
+                canvas.counter++;
+                newleft += 100;
+                deselectresize($('#gtransparency'));
+            });
+            //Cancel Resize Effect
+            $("#cresize").click(function () {
+                //prevchanges();
+                deselectresize($('#resize'));
+            });
+
+            $('.rcancle').on("click", function () {
+
+                prevchanges();
+                deselectresize($('#gtransparency'));
+                //return false;
+            });
+
+            //Close Resize Popup
+            function deselectresize(e) {
+                $('.popresize').slideFadeToggle(function () {
+                    e.removeClass('selected');
+                });
+            }
+            function deselecttext(e) {
+                $('.poptext').slideFadeToggle(function () {
+                    e.removeClass('selected');
+                });
+            }
+            $("#FText").click(function () {
+                prevchange = JSON.stringify(canvas.toJSON(['width', 'height']));
+                updateModifications(true);
+                canvas.counter++;
+                newleft += 100;
+                $("#txtformate").css("display", "none");
+            });
+            $(".rtext").click(function () {
+                prevchanges();
+                $("#txtformate").css("display", "none");
+            });
+            $(function () {
+                canvas.on({
+                    'object:selected': function (e) {
+                        onSelected();
+                    },
+                    'selection:cleared': function (e) {
+                        onDeSelected();
+                    }
+                });
+                canvas.on('mouse:down', function () {
+                    
+
+                });
+                canvas.on("mouse:move", function (event) {
+                    currentMouseY = Math.round(event.e.y - canvas._offset.top);
+                    currentMouseX = Math.round(event.e.x - canvas._offset.left);
+                });
+                //canvas.on('object:moving', function (e) {
+                //    if (e.target.getWidth() + e.target.left > canvas.width) {
+                //        e.target.set('left', canvas.width - e.target.getWidth());
+                //        e.target.setCoords();
+                //        canvas.renderAll();
+                //    }
+                //    if (e.target.getHeight() + e.target.top > canvas.height) {
+                //        e.target.set('top', canvas.height - e.target.getHeight());
+                //        e.target.setCoords();
+                //        canvas.renderAll();
+                //    }
+                //    if (e.target.top < 0) {
+                //        e.target.set('top', 0);
+                //        e.target.setCoords();
+                //        canvas.renderAll();
+                //    }
+                //    if (e.target.left < 0) {
+                //        e.target.set('left', 0);
+                //        e.target.setCoords();
+                //        canvas.renderAll();
+                //    }
+                //});
+
+                $(canvas.wrapperEl).on("mousewheel", function (event) {
+                    var target = canvas.findTarget(event);
+                    if (target) {
+                        var delta = event.originalEvent.wheelDelta / 120;
+                        zoom(delta, target);
+                    };
+                    event.preventDefault() && false;
+                });
+            });
+            function zoom(delta, target) {
+                var factor = 0.8;
+
+                if (delta < 0) {
+                    factor = 1 / factor;
+                }
+               canvas.setHeight(canvas.getHeight() * factor);
+               canvas.setWidth(canvas.getWidth() * factor);
+
+                var objects = canvas.getObjects();
+                for (var i in objects) {
+                    var scaleX = objects[i].scaleX;
+                    var scaleY = objects[i].scaleY;
+                    var left = objects[i].left;
+                    var top = objects[i].top;
+
+                    var tempScaleX = scaleX * factor;
+                    var tempScaleY = scaleY * factor;
+                    var tempLeft = left * factor;
+                    var tempTop = top * factor;
+                    objects[i].scaleX = tempScaleX;
+                    objects[i].scaleY = tempScaleY;
+                    objects[i].left = tempLeft;
+                    objects[i].top = tempTop;
+                    objects[i].setCoords();
+                }
+                //// Zoom into the image.
+                //image.setScaleX(image.getScaleX() * factor);
+                //image.setScaleY(image.getScaleY() * factor);
+                canvas.renderAll();
+            }
+            function onSelected() {
+                var obj = canvas.getActiveObject();
+                
+                if (obj.type === "i-text")
+                {
+                    
+                    $("#txtformate").css("display", "");
+                        document.getElementById('fsize').value = obj.fontSize;
+                        document.getElementById('fcolor').value = obj.fill;
+                        canvas.renderOnAddition = true;
+                        fontweight = obj.getFontWeight();
+                        textdecoration = obj.textDecoration;
+                        if(fontweight=="bold")
+                        {
+                            // document.getElementById("Fbold").className="fbold";
+                            fontbold=1;
+                        }
+                        if(fontweight=="italic")
+                        {
+                            //document.getElementById("FItalic").className = "fitalic";
+                            fonitalic=1;
+                        }
+                        if(fontweight=="bold italic" || fontweight=="italic bold")
+                        {
+                            fontbold = 1;
+                            fonitalic = 1;
+                        }
+           
+                  
+                }
+                else
+                {
+                    $("#txtformate").css("display", "none");
+                    
+                }
+                
+                
+               // alert("selected");
+            }
+            function onDeSelected() {
+                $("#txtformate").css("display", "none");
+               
+                //onSelected();
+                //deselecttext($('#gtransparency'));
+               // alert("gfdgd");
+            }
+
+            $("#fsize").bind('keyup mouseup', function () {
+              
+                var val = $(this).val();
+                if (isNaN(val)) {
+                    alert('please enter number');
+                    $(this).val('');
+                }
+                var activeObject = canvas.getActiveObject();
+                activeObject.fontSize = val;
+                canvas.renderAll();
+                //prevchange = JSON.stringify(canvas.toDatalessObject());
+                //updateModifications(true);
+                //canvas.counter++;
+                //newleft += 100;
+            });
+            //$('#fsize').keyup(function () {
+            //    var val = $(this).val();
+            //    if (isNaN(val)) {
+            //        alert('please enter number');
+            //        $(this).val('');
+            //    }
+            //    var activeObject = canvas.getActiveObject();
+            //    activeObject.fontSize = val;
+            //    canvas.renderAll();
+            //    prevchange = JSON.stringify(canvas.toDatalessObject());
+            //    updateModifications(true);
+            //    canvas.counter++;
+            //    newleft += 100;
+            //});
+            $("#fcolor").change(function () {
+               // alert("color");
+                var activeObject = canvas.getActiveObject();
+                activeObject.fill = $(this).val();
+                canvas.renderAll();
+            });
+            $("#fleft").click(function () {
+              //  alert("left");
+                var activeObject = canvas.getActiveObject();
+                activeObject.textAlign = "left";
+                canvas.renderAll();
+            });
+            $("#fcenter").click(function () {
+                alert("center");
+                var activeObject = canvas.getActiveObject();
+                activeObject.textAlign = "center";
+                canvas.renderAll();
+            });
+            $("#fright").click(function () {
+                alert("right");
+                var activeObject = canvas.getActiveObject();
+                activeObject.textAlign = "right";
+                canvas.renderAll();
+            });
+            //for Font bold 
+            $("#Fbold").click(function () {
+                var activeObject = canvas.getActiveObject();
+                alert(fontbold);
+               if(fontbold != 0)
+               {
+                   if (fonitalic != 0) {
+                       activeObject.fontWeight = 'italic';
+                       fontbold = 0;
+                   }
+                   else {
+                       activeObject.fontWeight = '';
+                       fontbold = 0;
+                   }
+
+                   canvas.renderAll();
+                        //alert("not bold");
+                        //activeObject.fontWeight = '';
+                        //fontbold = 0;
+                        //canvas.renderAll();
+               }
+               else
+               {
+                   if (fonitalic != 0) {
+                       activeObject.fontWeight = 'bold italic';
+                       fontbold = 1;
+                   }
+                   else {
+                       activeObject.fontWeight = 'bold';
+                       fontbold = 1;
+                   }
+                   canvas.renderAll();
+                   //alert("boldthere");
+                   //activeObject.set("fontWeight", 'bold');
+                   ////$("#Fbold").removeClass("fbold");
+                   //fontbold = 1;
+                   //canvas.renderAll();
+               }
+            });
+            //for Font bold 
+            $("#FItalic").click(function () {
+                var activeObject = canvas.getActiveObject();
+                if (fonitalic != 0) {
+                    alert("hello italic");
+                    if (fontbold != 0)
+                    {
+                        activeObject.fontWeight = 'bold';
+                        fonitalic = 0;
+                    }
+                    else
+                    {
+                        activeObject.fontWeight = '';
+                        fonitalic=0;
+                    }
+                   
+                    canvas.renderAll();
+                }
+                else {
+                    alert("hello not italic");
+                    if (fontbold != 0) {
+                        activeObject.fontWeight = 'bold italic';
+                          fonitalic = 1;
+                    }
+                    else {
+                        activeObject.fontWeight = 'italic';
+                        fonitalic = 1;
+                    }
+                    canvas.renderAll();
+                }
+            });
+
+            //for underline
+            $("#underline").click(function () {
+                if(".underline")
+                {
+                    var activeObject = canvas.getActiveObject();
+                    activeObject.textdecoration = "";
+        
+                }
+            });
+
+            var fopacity = document.getElementById('fopacity');
+            fopacity.addEventListener('change', function (e) {
+              
+                //var cimg = canvas.getActiveObject();
+               // prevchanges();
+                var opacityval = parseFloat(this.value) / 100;
+     
+                var objects = canvas.getActiveObject();
+                objects.set("opacity", opacityval);
+                canvas.renderAll();
+                
+            });
+            //for Cropping
+            $("#crop").click(function () {
+                if ($(this).hasClass('selected')) {
+                    deselect1($(this));
+                }
+                else {
+                    $(this).addClass('selected');
+                    $('.pop1').slideFadeToggle();
+                }
+                //txtwidth = document.getElementById("txtw").value;
+                //txtheight = document.getElementById("txth").value;
+                var canvasJson = canvas.getObjects();
+                // Cropping canvas according to cropper rectangle
+                if (canvas.getObjects().length > 0) {
+                    var i;
+                    for (i = 0; i < canvas.getObjects().length; i++) {
+                        if (canvas.getObjects()[i].type == 'cropper') {
+                            canvas.getObjects()[i].remove();
+                            canvas.renderAll();
+                        }
+                    }
+                }
+                            var rect = new fabric.Rect({
+                                left: 50,
+                                top: 50,
+                                fill: 'transparent',
+                                width: canvas.width/2,
+                                height:canvas.height/2,
+                                strokeDashArray: [5, 5],
+                                stroke: 'black',
+                                type: 'cropper',
+                                //lockScalingX: true,
+                                //lockScalingY: true,
+                                lockRotation: true
+                            });
+                            canvas.add(rect);
+                        
+                canvas.renderAll();
+                
+            });
+            //Close Crop Popup
+            function deselect1(e) {
+                $('.pop1').slideFadeToggle(function () {
+                    e.removeClass('selected');
+                });
+            }
+            //Cancel Crop
+            $('.cancle').on('click', function () {
+                if (canvas.getObjects().length > 0) {
+                    var i;
+                    for (i = 0; i < canvas.getObjects().length; i++) {
+                        if (canvas.getObjects()[i].type == 'cropper') {
+                            canvas.getObjects()[i].remove();
+                            canvas.renderAll();
+                        }
+                    }
+                }
+
+                deselect1($('#crop'));
+            });
+            //Crop Canvas
+            $("#fcrop").click(function () {
+                
+                var i;
+                var croppedLeft = 0;
+                var croppedTop = 0;
+                var canvasJson = canvas.getObjects();
+                
+                // Cropping canvas according to cropper rectangle
+                if (canvas.getObjects().length > 0) {
+                    var i;
+                    for (i = 0; i < canvas.getObjects().length; i++) {
+                        if (canvas.getObjects()[i].type === 'cropper') {
+                            croppedLeft = canvas.getObjects()[i].left;
+                            croppedTop = canvas.getObjects()[i].top;
+                            var canvasw = canvas.getObjects()[i].getWidth();
+                            var canvash = canvas.getObjects()[i].getHeight();
+                            canvas.setHeight(canvash);
+                            canvas.setWidth(canvasw);
+                            canvas.getObjects()[i].remove();
+                        }
+                    }
+                }
+                
+                //debugger;
+                //////////////Shifting the elements accordigly////////////////
+                for (i = 0; i < canvasJson.length; i++) {
+
+                    //if (canvas.getObjects()[i].type === "itext") {
+                    //    alert("yes");
+                    //    alert(canvas.getObjects()[i].top)
+                    //    //canvas.getObjects()[i].left = croppedLeft ;
+                    //    //canvas.getObjects()[i].top = croppedTop + canvas.getObjects()[i].top;
+                    //    canvas.getObjects()[i].setCoords();
+                    //    canvas.setActiveObject(canvas.getObjects()[i]);
+                    //    canvas.getObjects()[i].selectable = true;
+                    //    canvas.getObjects()[i].left = canvas.getObjects()[i].left - croppedLeft
+                    //    canvas.getObjects()[i].top = canvas.getObjects()[i].top - croppedTop
+                    //}
+                    //alert(canvas.getObjects()[i].left + "top:" + canvas.getObjects()[i].top)
+                    canvas.getObjects()[i].left = canvas.getObjects()[i].left - croppedLeft
+                    canvas.getObjects()[i].top = canvas.getObjects()[i].top - croppedTop
+                    
+                    canvas.renderAll();
+                    canvas.getObjects()[i].setCoords();
+                }
+                
+                
+                prevchange = JSON.stringify(canvas.toJSON(['width', 'height']));
+                updateModifications(true);
+                canvas.counter++;
+                newleft += 100;
+                deselect1($('#crop'));
+            });       
+            //});
+        
+            $("#gray").click(function () {
+                
+                if(this.checked)
+                {
+                    var cimg = canvas.getActiveObject();
+                    if (cimg.type === "image") {
+                        cimg.filters.push(new fabric.Image.filters.Grayscale()),
+                    cimg.applyFilters(canvas.renderAll.bind(canvas));
+
+                    }
+                }
+                else
+                {
+                    prevchanges();
+                }
+            });
+
+            $("#zoomin").click(function () {
+
+                //canvas.setZoom(canvas.getZoom() * 1.1);
+                zoomIn();
+            });
+            $("#zoomout").click(function () {
+
+                zoomOut();
+                          });
+            function zoomIn() {
+                canvasScale = canvasScale * SCALE_FACTOR;
+                canvas.setHeight(canvas.getHeight() * SCALE_FACTOR);
+                canvas.setWidth(canvas.getWidth() * SCALE_FACTOR);
+                var objects = canvas.getObjects();
+                for (var i in objects) {
+                    var scaleX = objects[i].scaleX;
+                    var scaleY = objects[i].scaleY;
+                    var left = objects[i].left;
+                    var top = objects[i].top;
+
+                    var tempScaleX = scaleX * SCALE_FACTOR;
+                    var tempScaleY = scaleY * SCALE_FACTOR;
+                    var tempLeft = left * SCALE_FACTOR;
+                    var tempTop = top * SCALE_FACTOR;
+
+                    objects[i].scaleX = tempScaleX;
+                    objects[i].scaleY = tempScaleY;
+                    objects[i].left = tempLeft;
+                    objects[i].top = tempTop;
+
+                    objects[i].setCoords();
+                }
+
+
+                canvas.renderAll();
+            }
+            function zoomOut() {
+                canvasScale = canvasScale / SCALE_FACTOR;
+                canvas.setHeight(canvas.getHeight() * (1 / SCALE_FACTOR));
+                canvas.setWidth(canvas.getWidth() * (1 / SCALE_FACTOR));
+
+                var objects = canvas.getObjects();
+                for (var i in objects) {
+                    var scaleX = objects[i].scaleX;
+                    var scaleY = objects[i].scaleY;
+                    var left = objects[i].left;
+                    var top = objects[i].top;
+                    var tempScaleX = scaleX * (1 / SCALE_FACTOR);
+                    var tempScaleY = scaleY * (1 / SCALE_FACTOR);
+                    var tempLeft = left * (1 / SCALE_FACTOR);
+                    var tempTop = top * (1 / SCALE_FACTOR);
+                    objects[i].scaleX = tempScaleX;
+                    objects[i].scaleY = tempScaleY;
+                    objects[i].left = tempLeft;
+                    objects[i].top = tempTop;
+                    objects[i].setCoords();
+                }
+
+                canvas.renderAll();
+            }
+            //$("#freedraw").click(function () {
+            //    if ($(this).hasClass('selected')) {
+            //        deselectfreedraw($(this));
+            //    } else {
+            //        $(this).addClass('selected');
+            //        $('.popfreedraw').slideFadeToggle();
+            //    }
+            //    canvas.isDrawingMode = true;
+             
+            //});
+           
+            //FreeDraw Close 
+            function deselectfreedraw(e) {
+                $('.popfreedraw').slideFadeToggle(function () {
+                    e.removeClass('selected');
+                });
+            }
+            //Save FreeDraw Effect
+            $("#Ffreedraw").click(function()
+            {
+                updateModifications(true);
+                canvas.counter++;
+                newleft += 100;
+                prevchange = JSON.stringify(canvas.toJSON(['width', 'height']));
+                deselectfreedraw($('#freedraw'));
+                canvas.isDrawingMode = false;
+            });
+            //Cancel FreeDraw Effect
+            $("#Cfreedraw").click(function () {
+                deselectfreedraw($('#freedraw'));
+                canvas.isDrawingMode = false;
+                prevchanges();
+                
+            });
+            if (fabric.PatternBrush) {
+                //Verticle Line Brush
+                var vLinePatternBrush = new fabric.PatternBrush(canvas);
+                vLinePatternBrush.getPatternSrc = function () {
+
+                    var patternCanvas = fabric.document.createElement('canvas');
+                    patternCanvas.width = patternCanvas.height = 10;
+                    var ctx = patternCanvas.getContext('2d');
+
+                    ctx.strokeStyle = this.color;
+                    ctx.lineWidth = 5;
+                    ctx.beginPath();
+                    ctx.moveTo(0, 5);
+                    ctx.lineTo(10, 5);
+                    ctx.closePath();
+                    ctx.stroke();
+
+                    return patternCanvas;
+                };
+                //Horizontal Line Brush 
+                var hLinePatternBrush = new fabric.PatternBrush(canvas);
+                hLinePatternBrush.getPatternSrc = function () {
+
+                    var patternCanvas = fabric.document.createElement('canvas');
+                    patternCanvas.width = patternCanvas.height = 10;
+                    var ctx = patternCanvas.getContext('2d');
+
+                    ctx.strokeStyle = this.color;
+                    ctx.lineWidth = 5;
+                    ctx.beginPath();
+                    ctx.moveTo(5, 0);
+                    ctx.lineTo(5, 10);
+                    ctx.closePath();
+                    ctx.stroke();
+
+                    return patternCanvas;
+                };
+                var squarePatternBrush = new fabric.PatternBrush(canvas);
+                squarePatternBrush.getPatternSrc = function () {
+
+                    var squareWidth = 10, squareDistance = 2;
+
+                    var patternCanvas = fabric.document.createElement('canvas');
+                    patternCanvas.width = patternCanvas.height = squareWidth + squareDistance;
+                    var ctx = patternCanvas.getContext('2d');
+
+                    ctx.fillStyle = this.color;
+                    ctx.fillRect(0, 0, squareWidth, squareWidth);
+
+                    return patternCanvas;
+                };
+                var diamondPatternBrush = new fabric.PatternBrush(canvas);
+                diamondPatternBrush.getPatternSrc = function () {
+
+                    var squareWidth = 10, squareDistance = 5;
+                    var patternCanvas = fabric.document.createElement('canvas');
+                    var rect = new fabric.Rect({
+                        width: squareWidth,
+                        height: squareWidth,
+                        angle: 45,
+                        fill: this.color
+                    });
+
+                    var canvasWidth = rect.getBoundingRectWidth();
+
+                    patternCanvas.width = patternCanvas.height = canvasWidth + squareDistance;
+                    rect.set({ left: canvasWidth / 2, top: canvasWidth / 2 });
+
+                    var ctx = patternCanvas.getContext('2d');
+                    rect.render(ctx);
+
+                    return patternCanvas;
+                };
+                var img = new Image();
+                img.src = '../assets/honey_im_subtle.png';
+                var texturePatternBrush = new fabric.PatternBrush(canvas);
+                texturePatternBrush.source = img;
+            }
+
+            document.getElementById('drawing-mode-selector').addEventListener('change', function () {
+
+                if (this.value === 'hline') {
+                    canvas.freeDrawingBrush = vLinePatternBrush;
+                }
+                else if (this.value === 'vline') {
+                    canvas.freeDrawingBrush = hLinePatternBrush;
+                }
+                else if (this.value === 'square') {
+                    canvas.freeDrawingBrush = squarePatternBrush;
+                }
+                else if (this.value === 'diamond') {
+                    canvas.freeDrawingBrush = diamondPatternBrush;
+                }
+                else if (this.value === 'texture') {
+                    canvas.freeDrawingBrush = texturePatternBrush;
+                }
+                else {
+                    canvas.freeDrawingBrush = new fabric[this.value + 'Brush'](canvas);
+                }
+
+                if (canvas.freeDrawingBrush) {
+                    canvas.freeDrawingBrush.color = drawingColorEl.value;
+                    canvas.freeDrawingBrush.width = parseInt(drawingLineWidthEl.value, 10) || 1;
+                    canvas.freeDrawingBrush.shadowBlur = parseInt(drawingShadowWidth.value, 10) || 0;
+                }
+            });
+
+            drawingColorEl.onchange = function () {
+                canvas.freeDrawingBrush.color = drawingColorEl.value;
+            };
+            drawingLineWidthEl.onchange = function () {
+                canvas.freeDrawingBrush.width = parseInt(drawingLineWidthEl.value, 10) || 1;
+            };
+            drawingShadowWidth.onchange = function () {
+                canvas.freeDrawingBrush.shadowBlur = parseInt(drawingShadowWidth.value, 10) || 0;
+            };
+            if (canvas.freeDrawingBrush) {
+                canvas.freeDrawingBrush.color = drawingColorEl.value;
+                canvas.freeDrawingBrush.width = parseInt(drawingLineWidthEl.value, 10) || 1;
+                canvas.freeDrawingBrush.shadowBlur = 10;
+            }
+
+            //document.getElementById('canvas-background-picker').addEventListener('change', function () {
+            //    canvas.backgroundColor = this.value;
+            //    canvas.renderAll();
+            //});
+            $("#lineThrough").click(function () {
+                var activeObject = canvas.getActiveObject();
+                activeObject.textDecoration = "line-through";
+                canvas.renderAll();
+            });
+
+            $("#roundframe").click(function () {
+                alert("hello");
+                var rect = new fabric.Rect({
+                    originX: "left",
+                    originY: "top",
+                    left: 0,
+                    top: 0,
+                    stroke: "red",
+                    strokeWidth: 4,
+                    fill: 'transparent',
+                    opacity: 1,
+                    width: canvas.getWidth()-4,
+                    height:canvas.getHeight()-4,
+                   
+                });
+                canvas.add(rect);
+            });
+
+            $("#fliph").click(function () {
+                var activeObject = canvas.getActiveObject();
+                if (flag == 0)
+                {
+                    
+                    activeObject.set({ 'flipX': true })
+                    flag = 1;
+                    canvas.renderAll();
+                }
+                else
+                {
+                    activeObject.set({ 'flipX': false })
+                    flag = 0;
+                    canvas.renderAll();
+                }
+             
+               
+            
+
+            });
+            $("#flipv").click(function () {
+                var activeObject = canvas.getActiveObject();
+                if (flag == 0) {
+
+                    activeObject.set({ 'flipY': true })
+                    flag = 1;
+                    canvas.renderAll();
+                }
+                else {
+                    activeObject.set({ 'flipY': false })
+                    flag = 0;
+                    canvas.renderAll();
+                }
+
+
+
+
+            });
+
+        });
+        function setheight(textvalue) {
+            if (document.getElementById('ratio').checked) {
+                if (canvas.getWidth() > canvas.getHeight()) {
+                    var newheight = parseInt(textvalue) / 1.5;
+                    document.getElementById("txtheight").value = parseInt(newheight);
+                }
+                else
+                {
+                    var newheight = parseInt(textvalue) * 1.5;
+                    document.getElementById("txtheight").value = parseInt(newheight);
+}
+            }
+        }
+        function setwidth(textvalue) {
+            if (document.getElementById('ratio').checked) {
+                if (canvas.getHeight() > canvas.getWidth())
+                {
+                    var newwidth = parseInt(textvalue) / 1.5;
+                    document.getElementById("txtwidth").value = parseInt(newwidth);
+                }
+                else
+                {
+                    var newwidth = parseInt(textvalue) * 1.5;
+                    document.getElementById("txtwidth").value = parseInt(newwidth);
+                }
+            }
+        }
+        function getsize() {
+            if (document.getElementById('byper').checked) {
+                document.getElementById("txtwidth").value = 100;
+                document.getElementById("txtheight").value = 100;
+            }
+            else {
+                document.getElementById("txtwidth").value = canvas.width;
+                document.getElementById("txtheight").value = canvas.height;
+            }
+        }
+        function Addstiker(img)
+        {
+            
+            fabric.Image.fromURL(img.src, function (oImg) {
+                var l = Math.random() * (100 - 0) + 0;
+                var t = Math.random() * (100 - 0) + 0;
+              //  oImg.scale(0.2);
+                oImg.set({ 'left': 0 });
+                oImg.set({ 'top': 0 });
+                oImg.set({ 'opacity': 0.6 });
+                oImg.set({ 'width': canvas.getWidth() });
+                oImg.set({ 'height': canvas.getHeight() });
+                oImg.fillColor = "#FFFFFF";
+                oImg.set({'type':"Stiker"})
+                canvas.add(oImg);
+                canvas.renderAll();
+            });
+           
+        }
+       
+    </script>
+    <style type="text/css">
+         #c {
+  border: 1px solid grey;
+  -webkit-transition:width 2s, height 2s, background-color 2s, -webkit-transform 2s;
+  transition:width 2s, height 2s, background-color 2s, transform 2s;
+}
+
+         .messagepopsepia {
+            background-color: #FFFFFF;
+            border: 1px solid #999999;
+            cursor: default;
+            display: none;
+            /*margin-top: 276px;*/
+            margin-left: 691px;
+            position: absolute;
+            text-align: left;
+            /*width: 394px;*/
+            z-index: 50;
+            padding: 25px 25px 20px;
+        }
+         .messagepoppixelate{
+            background-color: #FFFFFF;
+            border: 1px solid #999999;
+            cursor: default;
+            display: none;
+            /*margin-top: 276px;*/
+            margin-left: 691px;
+            position: absolute;
+            text-align: left;
+            /*width: 394px;*/
+            z-index: 50;
+            padding: 25px 25px 20px;
+        }
+        .messagepopgtransparency {
+            background-color: #FFFFFF;
+            border: 1px solid #999999;
+            cursor: default;
+            display: none;
+            /*margin-top: 276px;*/
+            margin-left: 691px;
+            position: absolute;
+            text-align: left;
+            /*width: 394px;*/
+            z-index: 50;
+            padding: 25px 25px 20px;
+        }
+         .messagepopbright {
+            background-color: #FFFFFF;
+            border: 1px solid #999999;
+            cursor: default;
+            display: none;
+            /*margin-top: 276px;*/
+            margin-left: 691px;
+            position: absolute;
+            text-align: left;
+            /*width: 394px;*/
+            z-index: 50;
+            padding: 25px 25px 20px;
+        }
+      .messagepopresize {
+            background-color: #FFFFFF;
+            border: 1px solid #999999;
+            cursor: default;
+            display: none;
+            /*margin-top: 276px;*/
+            margin-left: 604px;
+            position: absolute;
+            text-align: left;
+            /*width: 394px;*/
+            z-index: 50;
+            padding: 25px 25px 20px;
+        }
+
+            .messagepoptext {
+            background-color: #FFFFFF;
+            border: 1px solid #999999;
+            cursor: default;
+            
+            /*margin-top: 276px;*/
+            margin-left: 555px;
+            position: absolute;
+            text-align: left;
+            /*width: 394px;*/
+            z-index: 50;
+            padding: 25px 25px 20px;
+        }
+            .messagepopdow{
+            background-color: #FFFFFF;
+            border: 1px solid #999999;
+            cursor: default;
+            display: none;
+            /*margin-top: 276px;*/
+            margin-left: 691px;
+            position: absolute;
+            text-align: left;
+            /*width: 394px;*/
+            z-index: 50;
+            padding: 25px 25px 20px;
+            }
+
+            .messagepop1{
+             background-color: #FFFFFF;
+            border: 1px solid #999999;
+            cursor: default;
+            display: none;
+            /*margin-top: 276px;*/
+            margin-left: 691px;
+            position: absolute;
+            text-align: left;
+            /*width: 394px;*/
+            z-index: 50;
+            padding: 25px 25px 20px;
+            }
+            .messagepopfreedraw
+            {
+            background-color: #FFFFFF;
+            border: 1px solid #999999;
+            cursor: default;
+            display: none;
+            /*margin-top: 276px;*/
+            margin-left: 691px;
+            position: absolute;
+            text-align: left;
+            /*width: 394px;*/
+            z-index: 50;
+            padding: 25px 25px 20px;
+            }
+    </style>
+</head>
+<body>
+    <div style="height:70px;"> 
+    Select File:<input class="btn btn-default" type="file" id="imageLoader" name="imageLoader" />
+    </div>
+   
+        <div class="col-lg-8" style="margin-bottom:50px;">
+                <canvas id="design-canvas" width="600" height="400"></canvas>
+        </div>
+        <div class="col-lg-4" style="padding:10px;">
+            <textarea rows="2" class="form-control" id="add-text-value">Your Text Here</textarea>
+            <br/>
+                <select id="ffselect">
+                    <option style="font-family: 'Comic Sans MS'">Comic Sans MS</option>
+                    <option style="font-family: 'Arial'">Arial</option>
+                    <option style="font-family: 'Times New Roman'">Times New Roman</option>
+                    <option style="font-family:Calibri">Calibri</option>
+                    <option style="font-family: 'Redressed'">Redressed</option>
+                    <option style="font-family:'Mrs Sheppards'">Mrs Sheppards</option>
+                    <option style="font-family:Verdana">Verdana</option>
+                </select>
+            <br/>
+            <button id="add-text-btn">ADD TEXT </button>
+            <br/><br/>
+            @*<input type="button" value="save" id="save"/>*@
+            @*<input type="button" value="addrect" id="rect"/>*@
+            <input type="button" id="crop" value="Crop" />
+            <input type="button" value="rotate" id="btnrotate" />
+            <input type="button" value="resize" id="resize" />
+            <br/>
+            <br/>
+            <input type="button" value="BrightNess" id="brightness" />
+            <input type="button" value="Noise" id="gcolor" />
+            <input type="button" value="Opacity" id="gtransparency" />
+            <input type="button" value="pixelate" id="pixelate" />
+            <input type="checkbox" id="gray" />Grayscal
+            <input type="button" value="Frame" id="roundframe"/>
+            <br/>
+            <br/>
+            @*<input type="button" id="fcrop" value="FCrop" />*@
+            <input type="button" value="zoomin" id="zoomin" />
+            <input type="button" value="zoomout" id="zoomout" />
+            <br/>
+            <input type="button" value="undo" id="undo" onclick="undo()" disabled/>
+            <input type="button" value="redo" id="redo" onclick="redo()" disabled/>
+            <br/>
+            <input type="button" value="Draw" id="freedraw"/>
+            <input type="button" value="save" id="save" />
+            <img src="~/images/galaxy2.jpg" onclick="Addstiker(this)" width="50" height="50"/>
+          
+          </div>
+    <br/>
+ 
+    @*For Crop*@
+    <div class="messagepop1 pop1">
+        @*<p><label for="email">Width</label><input type="text" id="txtw" onchange="javascript:txtwidthchange();return false;" value="200" /></p>
+        <p> <label for="body">Height</label> <input type="text" id="txth" value="200" /></p>*@
+        <p><button id="fcrop" class="btn btn-info btn-sm">Apply</button> <button id="Cancle" class="cancle btn btn-info btn-sm">Cancle</button></p>
+    </div>
+    @*Sepia Popup *@
+    <div class="messagepopsepia popsepia">
+        <p>Noise</p>
+        <input type=range id=sepiarange min=0 max=100 value=0 step="1">
+        <p><button id="Fsepia" class="btn btn-info btn-sm">Apply</button> <button id="Cancle" class="csepia btn btn-info btn-sm">Cancle</button></p>
+    </div>
+    @*gtransparency Popup *@
+    <div class="messagepopgtransparency popgtransparency">
+        <p>Opacity</p>
+        <input type=range id=gtransparencyrange min="0" max="100" value="1" step="1">
+        <p><button id="Fgtransparency" class="btn btn-info btn-sm">Apply</button> <button id="Cancle" class="cgtransparency btn btn-info btn-sm">Cancle</button></p>
+    </div>
+
+    @*gtransparency Popup *@
+    <div class="messagepopbright popbright">
+        <p>brightness</p>
+        <input type=range id=brightrange min="-100" max="100" value="1" step="1">
+        <p><button id="Fbright" class="btn btn-info btn-sm">Apply</button> <button id="Cancle" class="cbright btn btn-info btn-sm">Cancle</button></p>
+    </div>
+    @*Pixelate Popup *@
+    <div class="messagepoppixelate poppixelate">
+        <p>Pixelate</p>
+        <input type=range id=pixelaterange min="2" max="20" value="4" >
+        <p><button id="Fpixelate" class="btn btn-info btn-sm">Apply</button> <button id="Cancle" class="cpixelate btn btn-info btn-sm">Cancle</button></p>
+    </div>
+    @*Resize Popup *@
+    <div class="messagepopresize popresize">
+        <p><label>Width</label><input type="text" name="width" id="txtwidth" onkeyup="setheight(this.value);" /></p>
+        <p> <label>Height</label> <input type="text" name="height" id="txtheight" onkeyup="setwidth(this.value);"/></p>
+        <p><input type="checkbox" name="bypercentage" id="byper" onclick="getsize();" />By Percentage </p>
+        <p><input type="checkbox" name="ratio" id="ratio" checked />Keep Proportions </p>
+        <p><button id="Fresize" class="btn btn-info btn-sm">Apply</button> <button id="cresize" class=" btn btn-info btn-sm">Cancle</button></p>
+    </div>
+
+    @*Resize Popup *@
+    <div style="display:none;" class="messagepoptext" id="txtformate">
+        <p><label>FontSize</label><input type="number" id="fsize" /></p>
+        @*<p> <label>Height</label> <input type="text" name="height" id="txtheight" /></p>*@
+        <p><label>Color:</label><input type="color" id="fcolor" /> </p>
+        <p><input type="button" value="AlignLeft" id="fleft" /></p>
+        <p><input type="button" value="AlignCenter" id="fcenter" /></p>
+        <p><input type="button" value="AlignRight" id="fright" /></p>
+        <p><input type="button" value="Bold" id="Fbold" /></p>
+        <p><input type="button" value="Italic" id="FItalic" /></p>
+        <p>Opacity:<input type="range" min="0" max="100" step="1" id="fopacity"/></p>
+        @*<p><input type="button" value="Underline" id="underline" /></p>*@
+        @*<p><input type="button" value="Overline" id="overline" /></p>*@
+        <p><input type="button" value="LineThrough" id="lineThrough" /></p>
+        @*<p><input type="button" value="" id="underline" /></p>*@
+        <p><input type="button" value="flipH" id="fliph" /></p>
+        <p><input type="button" value="flipV" id="flipv" /></p>
+        <p><button id="FText" class="btn btn-info btn-sm">Apply</button> <button  class="rtext btn btn-info btn-sm">Cancle</button></p>
+    </div>
+    @*Save Popup *@
+    <div class="messagepopdow pop2">
+        <p><label for="filename">File Name</label><input type="text" id="fname" value="" /></p>
+        <p><input type="radio" name="ftype" value="png" checked />Png &nbsp;&nbsp;&nbsp;&nbsp; <input type="radio" name="ftype" value="jpg" />Jpg</p>
+        <p> <a href="#" class="btn btn-info btn-sm" id="btn-download" download="my-file-name.png">Download</a>  <button id="Cancle" class="cancledow">Cancle</button></p>
+    </div>
+
+    @*FreeDraw Popup *@
+    <div class="messagepopfreedraw popfreedraw">
+        <label for="drawing-mode-selector">Mode:</label>
+        <select id="drawing-mode-selector">
+            <option>Pencil</option>
+            <option>Circle</option>
+            <option>Spray</option>
+            <option>Pattern</option>
+            <option>hline</option>
+            <option>vline</option>
+            <option>square</option>
+            <option>diamond</option>
+            <option>texture</option>
+        </select><br>
+        <label for="drawing-line-width">Line width:</label>
+        <input type="range" value="30" min="0" max="150" id="drawing-line-width"><br>
+        <label for="drawing-color">Line color:</label>
+        <input type="color" value="#005E7A" id="drawing-color"><br>
+        <label for="drawing-shadow-width">Line shadow width:</label>
+        <input type="range" value="0" min="0" max="50" id="drawing-shadow-width"><br>
+        <p><button id="Ffreedraw" class="btn btn-info btn-sm">Apply</button> <button id="Cfreedraw" class="btn btn-info btn-sm">Cancle</button></p>
+    </div>
+    @*<img id="sample"/>*@
+</body> 
+</html>

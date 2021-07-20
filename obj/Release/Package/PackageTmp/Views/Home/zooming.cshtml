@@ -1,0 +1,139 @@
+﻿@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+
+<html>
+<head>
+    <meta name="viewport" content="width=device-width" />
+    <title>zooming</title>
+    <script src="https://code.jquery.com/jquery-1.10.1.min.js" type="text/javascript"></script>
+    <script type="text/javascript">
+        $(document).ready(function () {
+            var canvas = document.getElementById('canvas');
+            var image = document.getElementById('image');
+            var element = canvas.getContext("2d");
+
+            //set delta for zoom and keep track of current zoom
+            var zoomDelta = 0.1;
+            var currentScale = 1;
+
+            //set delta for rotation and keep of current rotation
+            var currentAngle = 0;
+            var startX, startY, isDown = false;
+
+            jQuery('#carregar').click(function () {
+                element.translate(canvas.width / 2, canvas.height / 2);
+
+                //the new refactored function common to all steps
+                drawImage();
+
+                jQuery('#canvas').attr('data-girar', 0);
+                this.disabled = true;
+            });
+
+            jQuery('#giraresq').click(function () {
+                angleInDegrees = -90;
+                currentAngle += angleInDegrees;
+                drawImage();
+            });
+
+            jQuery('#girardir').click(function () {
+                angleInDegrees = 90;
+                currentAngle += angleInDegrees;
+                drawImage();
+            });
+
+            jQuery('#scaler').on('change', function () {
+                alert("hiiii");
+               alert(this.value)
+                currentScale = (this.value);
+                drawImage();
+            });
+            jQuery('#zoomOut').click(function () {
+                currentScale -= zoomDelta;
+                drawImage();
+            });
+
+            canvas.onmousedown = function (e) {
+                var pos = getMousePos(canvas, e);
+                startX = pos.x;  //store current position
+                startY = pos.y;
+
+                isDown = true;   //mark that we are in move operation
+            }
+
+            canvas.onmousemove = function (e) {
+                
+                if (isDown === true) {
+                    var pos = getMousePos(canvas, e);
+                    var x = pos.x;
+                    var y = pos.y;
+                    if(canvas.offsetTop<)
+                    //translate difference from now and start
+                    element.translate(x - startX, y - startY);
+                    drawImage();
+
+                    //update start positions for next loop
+                    startX = x;
+                    startY = y;
+                }
+            }
+
+            //reset move operation status
+            canvas.onmouseup = function (e) {
+                isDown = false;
+            }
+
+            function getMousePos(canvas, evt) {
+                var rect = canvas.getBoundingClientRect();
+                return {
+                    x: evt.clientX - rect.left,
+                    y: evt.clientY - rect.top
+                };
+            }
+
+            // Function to clear canvas
+            function clear() {
+                element.clearRect(0, 0, canvas.width, canvas.height);
+            }
+
+            function drawImage() {
+                clear();
+                element.save(); //as we now keep track outselves of angle/zoom due to
+                //translation, we can use save/restore
+                element.scale(currentScale, currentScale);
+                element.rotate(currentAngle * Math.PI / 180);
+                element.drawImage(image, -image.width / 2, -image.width / 2);
+
+                element.restore();
+            }
+        });
+
+    </script>
+    <style type="text/css">
+        canvas {
+    border:1px solid red;
+    background-color:#000;
+}
+img {
+    display:none;
+}
+    </style>
+</head>
+<body>
+    <div>
+        <button id="carregar">Load Imagem</button>
+        <button id="giraresq">Rotate to Left</button>
+        <button id="girardir">Rotate to Right</button>
+        <button id="zoomIn">+ Zoom</button>
+        <input type="range" class=vrange id="scaler" value=1.00 min=0.00 max=3.00 step=0.10><br>    
+        <button id="zoomOut" disabled="true">- Zoom</button>
+        <button id="moveImage" disabled="true">Press do move imagem with mouse</button>
+        <hr />
+        <canvas id="canvas" height="300" width="300" data-girar="0" data-scale="0"></canvas>
+        <img src="http://www.astrosurf.com/santiago/images/lua11_53.jpg" id="image" width="300" height="300" />
+    </div>
+</body>
+</html>
